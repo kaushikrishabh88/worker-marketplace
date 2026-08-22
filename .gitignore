@@ -40,3 +40,7 @@ src-backup-before-hindi/
 # Temporary files
 *.tmp
 *.temp
+
+# Old/manual source backups
+*.before-cleanup.css
+*.before-dp.jsx
