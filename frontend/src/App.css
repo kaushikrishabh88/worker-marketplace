@@ -11553,3 +11553,267 @@ main,
     margin-top: 35px;
   }
 }
+
+/* =========================================================
+   CLICKABLE DASHBOARD CARDS
+========================================================= */
+
+.dashboard-clickable-card {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.dashboard-clickable-card:hover {
+  transform: translateY(-5px);
+
+  border-color:
+    rgba(109, 69, 223, 0.35);
+
+  box-shadow:
+    0 18px 40px
+    rgba(67, 45, 130, 0.16);
+}
+
+.dashboard-clickable-card:active {
+  transform: translateY(-2px);
+}
+
+.dashboard-clickable-card:focus-visible {
+  outline: 3px solid
+    rgba(109, 69, 223, 0.28);
+
+  outline-offset: 3px;
+}
+
+#my-jobs,
+#sent-requests,
+#my-applications,
+#received-requests {
+  scroll-margin-top: 100px;
+}
+
+/* =========================================================
+   FUNCTIONAL POPULAR SKILL CARDS
+========================================================= */
+
+.category-card-button {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.category-card-button:hover {
+  transform: translateY(-6px);
+
+  box-shadow:
+    0 18px 42px
+    rgba(55, 40, 110, 0.16);
+}
+
+.category-card-button:active {
+  transform: translateY(-2px);
+}
+
+.category-card-button:focus-visible {
+  outline: 3px solid
+    rgba(109, 69, 223, 0.3);
+
+  outline-offset: 3px;
+}
+
+#find-workers {
+  scroll-margin-top: 100px;
+}
+/* =========================================================
+   SENT REQUEST - EDIT / CANCEL CONTROLS
+========================================================= */
+
+.sent-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sent-request-actions button {
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1e293b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.sent-request-actions button:first-child {
+  border-color: rgba(37, 99, 235, 0.25);
+  color: #1d4ed8;
+}
+
+.sent-request-actions button:last-child {
+  border-color: rgba(220, 38, 38, 0.22);
+  color: #b91c1c;
+}
+
+.sent-request-actions button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+}
+
+.sent-request-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================================================
+   SENT REQUEST - EDIT FORM
+========================================================= */
+
+.sent-request-edit-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.sent-request-edit-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.sent-request-edit-form label > span {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.sent-request-edit-form input,
+.sent-request-edit-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 11px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  font: inherit;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.sent-request-edit-form textarea {
+  min-height: 105px;
+  resize: vertical;
+}
+
+.sent-request-edit-form input:focus,
+.sent-request-edit-form textarea:focus {
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.sent-request-edit-form input:disabled,
+.sent-request-edit-form textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   SENT REQUEST - EDIT FORM BUTTONS
+========================================================= */
+
+.sent-request-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.sent-request-edit-actions button {
+  min-height: 43px;
+  padding: 10px 17px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.sent-request-edit-actions button:first-child {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 7px 18px rgba(37, 99, 235, 0.2);
+}
+
+.sent-request-edit-actions button:last-child {
+  border-color: rgba(100, 116, 139, 0.24);
+  background: #ffffff;
+  color: #475569;
+}
+
+.sent-request-edit-actions button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.sent-request-edit-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================================================
+   SENT REQUEST - MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+  .sent-request-actions,
+  .sent-request-edit-actions {
+    flex-direction: column;
+  }
+
+  .sent-request-actions button,
+  .sent-request-edit-actions button {
+    width: 100%;
+  }
+
+  .sent-request-edit-form {
+    padding: 16px;
+  }
+}

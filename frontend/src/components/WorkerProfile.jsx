@@ -1,129 +1,78 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import "./WorkerProfile.css";
 
 import ProfileAvatar from "./ProfileAvatar";
 import { useToast } from "./useToast";
 
-const API_URL =
-  "http://localhost:5000";
+const API_URL = "http://localhost:5000";
 
 function WorkerProfile() {
   const { id } = useParams();
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const toast =
-    useToast();
+  const toast = useToast();
 
-  const photoInputRef =
-    useRef(null);
+  const photoInputRef = useRef(null);
 
-  const token =
-    localStorage.getItem(
-      "workmateToken"
-    );
+  const token = localStorage.getItem("workmateToken");
 
-  const [loggedInUser] =
-    useState(() => {
-      try {
-        const storedUser =
-          localStorage.getItem(
-            "workmateUser"
-          );
+  const [loggedInUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem("workmateUser");
 
-        return storedUser
-          ? JSON.parse(
-              storedUser
-            )
-          : null;
-      } catch (error) {
-        console.error(
-          "Unable to read logged-in user:",
-          error
-        );
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Unable to read logged-in user:", error);
 
-        return null;
-      }
-    });
+      return null;
+    }
+  });
 
   /* =========================================================
      PROFILE STATE
   ========================================================= */
 
-  const [worker, setWorker] =
-    useState(null);
+  const [worker, setWorker] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    profileError,
-    setProfileError,
-  ] = useState("");
+  const [profileError, setProfileError] = useState("");
 
   /* =========================================================
      CONTACT STATE
   ========================================================= */
 
-  const [
-    showContactForm,
-    setShowContactForm,
-  ] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
 
-  const [
-    submitted,
-    setSubmitted,
-  ] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const [contactRequest, setContactRequest] = useState(null);
+
+  const [contactStatusLoading, setContactStatusLoading] = useState(false);
 
   /* =========================================================
      DELETE STATE
   ========================================================= */
 
-  const [
-    deleting,
-    setDeleting,
-  ] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   /* =========================================================
      EDIT STATE
   ========================================================= */
 
-  const [
-    showEditForm,
-    setShowEditForm,
-  ] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
 
-  const [
-    updating,
-    setUpdating,
-  ] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
-  const [
-    avatarUploading,
-    setAvatarUploading,
-  ] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
-  const [
-    avatarRemoving,
-    setAvatarRemoving,
-  ] = useState(false);
+  const [avatarRemoving, setAvatarRemoving] = useState(false);
 
-  const [
-    editData,
-    setEditData,
-  ] = useState({
+  const [editData, setEditData] = useState({
     name: "",
     phone: "",
     role: "",
@@ -138,59 +87,83 @@ function WorkerProfile() {
      FETCH SINGLE WORKER
   ========================================================= */
 
-  const fetchWorkerProfile =
-  useCallback(async () => {
+  const fetchWorkerProfile = useCallback(async () => {
     try {
-      const response =
-        await fetch(
-          `${API_URL}/api/workers/${id}`
-        );
+      const response = await fetch(`${API_URL}/api/workers/${id}`);
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to load worker profile."
-        );
+        throw new Error(data.message || "Failed to load worker profile.");
       }
 
-      setWorker(
-        data.worker
-      );
+      setWorker(data.worker);
 
       return data.worker;
     } catch (error) {
-      console.error(
-        "Worker profile error:",
-        error
-      );
+      console.error("Worker profile error:", error);
 
       throw error;
     }
   }, [id]);
 
   useEffect(() => {
-    const loadWorker =
-      async () => {
-        try {
-          setLoading(true);
-          setProfileError("");
+    const loadWorker = async () => {
+      try {
+        setLoading(true);
+        setProfileError("");
 
-          await fetchWorkerProfile();
-        } catch (error) {
-          setProfileError(
-            error.message ||
-              "Unable to load worker profile."
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
+        await fetchWorkerProfile();
+      } catch (error) {
+        setProfileError(error.message || "Unable to load worker profile.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
     loadWorker();
   }, [id, fetchWorkerProfile]);
+
+  /* =========================================================
+   FETCH CURRENT CONTACT REQUEST STATUS
+========================================================= */
+
+  useEffect(() => {
+    if (!token || !id || loggedInUser?.role !== "employer") {
+  return;
+}
+
+    const fetchContactStatus = async () => {
+      try {
+        setContactStatusLoading(true);
+
+        const response = await fetch(
+          `${API_URL}/api/contact-requests/worker/${id}/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to check request status.");
+        }
+
+        setContactRequest(data.request || null);
+      } catch (error) {
+        console.error("Contact status error:", error);
+
+        setContactRequest(null);
+      } finally {
+        setContactStatusLoading(false);
+      }
+    };
+
+    fetchContactStatus();
+  }, [id, token, loggedInUser?.role]);
 
   /* =========================================================
      OPEN EDIT FORM
@@ -198,37 +171,24 @@ function WorkerProfile() {
 
   function handleOpenEdit() {
     setEditData({
-      name:
-        worker?.name || "",
+      name: worker?.name || "",
 
-      phone:
-        worker?.phone || "",
+      phone: worker?.phone || "",
 
-      role:
-        worker?.role || "",
+      role: worker?.role || "",
 
-      experience:
-        worker?.experience ||
-        "",
+      experience: worker?.experience || "",
 
-      location:
-        worker?.location || "",
+      location: worker?.location || "",
 
-      availability:
-        worker?.availability ||
-        "",
+      availability: worker?.availability || "",
 
-      salary:
-        worker?.salary ?? "",
+      salary: worker?.salary ?? "",
 
-      description:
-        worker?.description ||
-        "",
+      description: worker?.description || "",
     });
 
-    setShowEditForm(
-      true
-    );
+    setShowEditForm(true);
   }
 
   /* =========================================================
@@ -236,56 +196,36 @@ function WorkerProfile() {
   ========================================================= */
 
   function handleCloseEdit() {
-    if (
-      updating ||
-      avatarUploading ||
-      avatarRemoving
-    ) {
+    if (updating || avatarUploading || avatarRemoving) {
       return;
     }
 
-    setShowEditForm(
-      false
-    );
+    setShowEditForm(false);
   }
 
   /* =========================================================
      EDIT INPUT CHANGE
   ========================================================= */
 
-  function handleEditChange(
-    event
-  ) {
-    const {
-      name,
-      value,
-    } = event.target;
+  function handleEditChange(event) {
+    const { name, value } = event.target;
 
-    setEditData(
-      (previous) => ({
-        ...previous,
-        [name]: value,
-      })
-    );
+    setEditData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   }
 
   /* =========================================================
      UPDATE LOCAL USER
   ========================================================= */
 
-  function updateStoredUser(
-    updatedUser
-  ) {
+  function updateStoredUser(updatedUser) {
     if (!updatedUser) {
       return;
     }
 
-    localStorage.setItem(
-      "workmateUser",
-      JSON.stringify(
-        updatedUser
-      )
-    );
+    localStorage.setItem("workmateUser", JSON.stringify(updatedUser));
   }
 
   /* =========================================================
@@ -293,10 +233,7 @@ function WorkerProfile() {
   ========================================================= */
 
   function handleChoosePhoto() {
-    if (
-      avatarUploading ||
-      avatarRemoving
-    ) {
+    if (avatarUploading || avatarRemoving) {
       return;
     }
 
@@ -307,135 +244,82 @@ function WorkerProfile() {
      UPLOAD / CHANGE PROFILE PHOTO
   ========================================================= */
 
-  async function handlePhotoChange(
-    event
-  ) {
-    const file =
-      event.target.files?.[0];
+  async function handlePhotoChange(event) {
+    const file = event.target.files?.[0];
 
-    event.target.value =
-      "";
+    event.target.value = "";
 
     if (!file) {
       return;
     }
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
-    if (
-      !allowedTypes.includes(
-        file.type
-      )
-    ) {
-      toast.error(
-        "Please choose a JPG, PNG or WebP image."
-      );
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please choose a JPG, PNG or WebP image.");
 
       return;
     }
 
-    if (
-      file.size >
-      1024 * 1024
-    ) {
-      toast.error(
-        "Profile photo must be 1 MB or smaller."
-      );
+    if (file.size > 1024 * 1024) {
+      toast.error("Profile photo must be 1 MB or smaller.");
 
       return;
     }
 
     if (!token) {
-      toast.warning(
-        "Please login again."
-      );
+      toast.warning("Please login again.");
 
       return;
     }
 
     try {
-      setAvatarUploading(
-        true
-      );
+      setAvatarUploading(true);
 
-      const formData =
-        new FormData();
+      const formData = new FormData();
 
-      formData.append(
-        "avatar",
-        file
-      );
+      formData.append("avatar", file);
 
-      const response =
-        await fetch(
-          `${API_URL}/api/profile/avatar`,
-          {
-            method: "POST",
+      const response = await fetch(`${API_URL}/api/profile/avatar`, {
+        method: "POST",
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
 
-            body:
-              formData,
-          }
-        );
+        body: formData,
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Unable to update profile photo."
-        );
+        throw new Error(data.message || "Unable to update profile photo.");
       }
 
       if (data.user) {
-        updateStoredUser(
-          data.user
-        );
+        updateStoredUser(data.user);
       }
 
-      setWorker(
-        (previous) =>
-          previous
-            ? {
-                ...previous,
+      setWorker((previous) =>
+        previous
+          ? {
+              ...previous,
 
-                avatarFileId:
-                  data.avatarFileId ||
-                  data.user
-                    ?.avatarFileId ||
-                  null,
-              }
-            : previous
+              avatarFileId:
+                data.avatarFileId || data.user?.avatarFileId || null,
+            }
+          : previous,
       );
 
       await fetchWorkerProfile();
 
-      toast.success(
-        "Profile photo updated successfully!"
-      );
+      toast.success("Profile photo updated successfully!");
     } catch (error) {
-      console.error(
-        "Worker photo upload error:",
-        error
-      );
+      console.error("Worker photo upload error:", error);
 
-      toast.error(
-        error.message ||
-          "Unable to update profile photo."
-      );
+      toast.error(error.message || "Unable to update profile photo.");
     } finally {
-      setAvatarUploading(
-        false
-      );
+      setAvatarUploading(false);
     }
   }
 
@@ -444,94 +328,63 @@ function WorkerProfile() {
   ========================================================= */
 
   async function handleRemovePhoto() {
-    if (
-      !worker?.avatarFileId
-    ) {
+    if (!worker?.avatarFileId) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        "Remove your profile photo? Your worker avatar will be shown instead."
-      );
+    const confirmed = window.confirm(
+      "Remove your profile photo? Your worker avatar will be shown instead.",
+    );
 
     if (!confirmed) {
       return;
     }
 
     if (!token) {
-      toast.warning(
-        "Please login again."
-      );
+      toast.warning("Please login again.");
 
       return;
     }
 
     try {
-      setAvatarRemoving(
-        true
-      );
+      setAvatarRemoving(true);
 
-      const response =
-        await fetch(
-          `${API_URL}/api/profile/avatar`,
-          {
-            method:
-              "DELETE",
+      const response = await fetch(`${API_URL}/api/profile/avatar`, {
+        method: "DELETE",
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        );
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Unable to remove profile photo."
-        );
+        throw new Error(data.message || "Unable to remove profile photo.");
       }
 
       if (data.user) {
-        updateStoredUser(
-          data.user
-        );
+        updateStoredUser(data.user);
       }
 
-      setWorker(
-        (previous) =>
-          previous
-            ? {
-                ...previous,
-                avatarFileId:
-                  null,
-              }
-            : previous
+      setWorker((previous) =>
+        previous
+          ? {
+              ...previous,
+              avatarFileId: null,
+            }
+          : previous,
       );
 
       await fetchWorkerProfile();
 
-      toast.success(
-        "Profile photo removed successfully!"
-      );
+      toast.success("Profile photo removed successfully!");
     } catch (error) {
-      console.error(
-        "Worker photo remove error:",
-        error
-      );
+      console.error("Worker photo remove error:", error);
 
-      toast.error(
-        error.message ||
-          "Unable to remove profile photo."
-      );
+      toast.error(error.message || "Unable to remove profile photo.");
     } finally {
-      setAvatarRemoving(
-        false
-      );
+      setAvatarRemoving(false);
     }
   }
 
@@ -539,15 +392,11 @@ function WorkerProfile() {
      UPDATE WORKER
   ========================================================= */
 
-  async function handleUpdateWorker(
-    event
-  ) {
+  async function handleUpdateWorker(event) {
     event.preventDefault();
 
     if (!token) {
-      toast.warning(
-        "Please login again."
-      );
+      toast.warning("Please login again.");
 
       return;
     }
@@ -555,90 +404,53 @@ function WorkerProfile() {
     try {
       setUpdating(true);
 
-      const response =
-        await fetch(
-          `${API_URL}/api/workers/${worker._id}`,
-          {
-            method: "PUT",
+      const response = await fetch(`${API_URL}/api/workers/${worker._id}`, {
+        method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
+        headers: {
+          "Content-Type": "application/json",
 
-              Authorization:
-                `Bearer ${token}`,
-            },
+          Authorization: `Bearer ${token}`,
+        },
 
-            body:
-              JSON.stringify({
-                name:
-                  editData.name.trim(),
+        body: JSON.stringify({
+          name: editData.name.trim(),
 
-                phone:
-                  editData.phone.trim(),
+          phone: editData.phone.trim(),
 
-                role:
-                  editData.role,
+          role: editData.role,
 
-                skills: [
-                  editData.role,
-                ],
+          skills: [editData.role],
 
-                location:
-                  editData.location.trim(),
+          location: editData.location.trim(),
 
-                experience:
-                  editData.experience,
+          experience: editData.experience,
 
-                availability:
-                  editData.availability,
+          availability: editData.availability,
 
-                salary:
-                  Number(
-                    editData.salary
-                  ),
+          salary: Number(editData.salary),
 
-                description:
-                  editData.description.trim(),
+          description: editData.description.trim(),
 
-                emoji:
-                  worker.emoji ||
-                  "👨‍🍳",
-              }),
-          }
-        );
+          emoji: worker.emoji || "👨‍🍳",
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to update worker profile."
-        );
+        throw new Error(data.message || "Failed to update worker profile.");
       }
 
-      setWorker(
-        data.worker
-      );
+      setWorker(data.worker);
 
-      setShowEditForm(
-        false
-      );
+      setShowEditForm(false);
 
-      toast.success(
-        "Worker profile updated successfully!"
-      );
+      toast.success("Worker profile updated successfully!");
     } catch (error) {
-      console.error(
-        "Update worker error:",
-        error
-      );
+      console.error("Update worker error:", error);
 
-      toast.error(
-        error.message ||
-          "Unable to update worker profile."
-      );
+      toast.error(error.message || "Unable to update worker profile.");
     } finally {
       setUpdating(false);
     }
@@ -649,178 +461,108 @@ function WorkerProfile() {
   ========================================================= */
 
   function handleOpenContact() {
-    const currentToken =
-      localStorage.getItem(
-        "workmateToken"
-      );
+    const currentToken = localStorage.getItem("workmateToken");
 
-    const storedUser =
-      localStorage.getItem(
-        "workmateUser"
-      );
+    const storedUser = localStorage.getItem("workmateUser");
 
-    if (
-      !currentToken ||
-      !storedUser
-    ) {
+    if (!currentToken || !storedUser) {
       toast.warning(
-        "Please login or create an Employer account to contact this worker."
+        "Please login or create an Employer account to contact this worker.",
       );
 
-      navigate(
-        "/auth"
-      );
+      navigate("/auth");
 
       return;
     }
 
     try {
-      const currentUser =
-        JSON.parse(
-          storedUser
-        );
+      const currentUser = JSON.parse(storedUser);
 
-      if (
-        currentUser.role !==
-        "employer"
-      ) {
-        toast.warning(
-          "Only Employer accounts can contact workers."
-        );
+      if (currentUser.role !== "employer") {
+        toast.warning("Only Employer accounts can contact workers.");
 
         return;
       }
     } catch (error) {
-      console.error(
-        "Unable to read logged-in user:",
-        error
-      );
+      console.error("Unable to read logged-in user:", error);
 
-      toast.warning(
-        "Please login again to continue."
-      );
+      toast.warning("Please login again to continue.");
 
-      localStorage.removeItem(
-        "workmateToken"
-      );
+      localStorage.removeItem("workmateToken");
 
-      localStorage.removeItem(
-        "workmateUser"
-      );
+      localStorage.removeItem("workmateUser");
 
-      navigate(
-        "/auth"
-      );
+      navigate("/auth");
 
       return;
     }
 
-    setSubmitted(
-      false
-    );
+    setSubmitted(false);
 
-    setShowContactForm(
-      true
-    );
+    setShowContactForm(true);
   }
 
   /* =========================================================
      SUBMIT CONTACT REQUEST
   ========================================================= */
 
-  async function handleSubmit(
-    event
-  ) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const currentToken =
-      localStorage.getItem(
-        "workmateToken"
-      );
+    const currentToken = localStorage.getItem("workmateToken");
 
     if (!currentToken) {
-      toast.warning(
-        "Please login as an Employer to contact this worker."
-      );
+      toast.warning("Please login as an Employer to contact this worker.");
 
       return;
     }
 
-    const form =
-      event.target;
+    const form = event.target;
 
     const formData = {
-      workerId:
-        worker._id,
+      workerId: worker._id,
 
-      workerName:
-        worker.name,
+      workerName: worker.name,
 
-      name:
-        form.name.value.trim(),
+      name: form.name.value.trim(),
 
-      phone:
-        form.phone.value.trim(),
+      phone: form.phone.value.trim(),
 
-      message:
-        form.message.value.trim(),
+      workLocation: form.workLocation.value.trim(),
+
+      message: form.message.value.trim(),
     };
 
     try {
-      const response =
-        await fetch(
-          `${API_URL}/api/contact-worker`,
-          {
-            method: "POST",
+      const response = await fetch(`${API_URL}/api/contact-worker`, {
+        method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
+        headers: {
+          "Content-Type": "application/json",
 
-              Authorization:
-                `Bearer ${currentToken}`,
-            },
+          Authorization: `Bearer ${currentToken}`,
+        },
 
-            body:
-              JSON.stringify(
-                formData
-              ),
-          }
-        );
+        body: JSON.stringify(formData),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Request failed."
-        );
+        throw new Error(data.message || "Request failed.");
       }
 
-      setSubmitted(
-        true
-      );
+      setSubmitted(true);
 
-      window.dispatchEvent(
-        new Event(
-          "workmate-badges-refresh"
-        )
-      );
+      setContactRequest(data.request);
 
-      toast.success(
-        "Contact request sent successfully!"
-      );
+      window.dispatchEvent(new Event("workmate-badges-refresh"));
+
+      toast.success("Contact request sent successfully!");
     } catch (error) {
-      console.error(
-        "Contact request error:",
-        error
-      );
+      console.error("Contact request error:", error);
 
-      toast.error(
-        error.message ||
-          "Unable to send request. Please try again."
-      );
+      toast.error(error.message || "Unable to send request. Please try again.");
     }
   }
 
@@ -829,10 +571,9 @@ function WorkerProfile() {
   ========================================================= */
 
   async function handleDeleteWorker() {
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete ${worker.name}'s profile?\n\nThis action cannot be undone.`
-      );
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${worker.name}'s profile?\n\nThis action cannot be undone.`,
+    );
 
     if (!confirmed) {
       return;
@@ -841,44 +582,27 @@ function WorkerProfile() {
     try {
       setDeleting(true);
 
-      const response =
-        await fetch(
-          `${API_URL}/api/workers/${worker._id}`,
-          {
-            method: "DELETE",
+      const response = await fetch(`${API_URL}/api/workers/${worker._id}`, {
+        method: "DELETE",
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        );
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to delete worker profile."
-        );
+        throw new Error(data.message || "Failed to delete worker profile.");
       }
 
-      toast.success(
-        "Worker profile deleted successfully."
-      );
+      toast.success("Worker profile deleted successfully.");
 
       navigate("/");
     } catch (error) {
-      console.error(
-        "Delete worker error:",
-        error
-      );
+      console.error("Delete worker error:", error);
 
-      toast.error(
-        error.message ||
-          "Unable to delete worker profile."
-      );
+      toast.error(error.message || "Unable to delete worker profile.");
     } finally {
       setDeleting(false);
     }
@@ -892,14 +616,9 @@ function WorkerProfile() {
     return (
       <section className="worker-profile-page">
         <div className="profile-not-found">
-          <h1>
-            Loading worker...
-          </h1>
+          <h1>Loading worker...</h1>
 
-          <p>
-            Please wait while we load the
-            profile.
-          </p>
+          <p>Please wait while we load the profile.</p>
         </div>
       </section>
     );
@@ -909,28 +628,18 @@ function WorkerProfile() {
      ERROR
   ========================================================= */
 
-  if (
-    profileError ||
-    !worker
-  ) {
+  if (profileError || !worker) {
     return (
       <section className="worker-profile-page">
         <div className="profile-not-found">
-          <h1>
-            Worker not found
-          </h1>
+          <h1>Worker not found</h1>
 
           <p>
             {profileError ||
               "The worker profile you are looking for does not exist."}
           </p>
 
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/")
-            }
-          >
+          <button type="button" onClick={() => navigate("/")}>
             ← Back to Home
           </button>
         </div>
@@ -943,37 +652,18 @@ function WorkerProfile() {
   ========================================================= */
 
   const workerUserId =
-    typeof worker.user ===
-    "object"
-      ? worker.user?._id ||
-        worker.user?.id
+    typeof worker.user === "object"
+      ? worker.user?._id || worker.user?.id
       : worker.user;
 
-  const loggedInUserId =
-    loggedInUser?.id ||
-    loggedInUser?._id;
+  const loggedInUserId = loggedInUser?.id || loggedInUser?._id;
 
   const isOwner =
-    Boolean(
-      loggedInUserId
-    ) &&
-    Boolean(
-      workerUserId
-    ) &&
-    String(
-      workerUserId
-    ) ===
-      String(
-        loggedInUserId
-      );
+    Boolean(loggedInUserId) &&
+    Boolean(workerUserId) &&
+    String(workerUserId) === String(loggedInUserId);
 
-
-  const skills =
-    Array.isArray(
-      worker.skills
-    )
-      ? worker.skills
-      : [];
+  const skills = Array.isArray(worker.skills) ? worker.skills : [];
 
   /* =========================================================
      PAGE
@@ -988,9 +678,7 @@ function WorkerProfile() {
       <button
         className="profile-back-btn"
         type="button"
-        onClick={() =>
-          navigate(-1)
-        }
+        onClick={() => navigate(-1)}
       >
         ← Back to Workers
       </button>
@@ -1002,76 +690,40 @@ function WorkerProfile() {
       <div className="worker-profile-card">
         <ProfileAvatar
           person={worker}
-          fallback={
-            worker.emoji ||
-            "👨‍🍳"
-          }
+          fallback={worker.emoji || "👨‍🍳"}
           className="profile-avatar"
           alt={worker.name}
         />
 
         <div className="profile-content">
-          <span className="profile-verified">
-            ✓ Verified Worker
-          </span>
+          <span className="profile-verified">✓ Verified Worker</span>
 
-          <h1>
-            {worker.name}
-          </h1>
+          <h1>{worker.name}</h1>
 
-          <p className="profile-role">
-            {worker.role}
-          </p>
+          <p className="profile-role">{worker.role}</p>
 
           <div className="profile-meta">
-            <span>
-              📍{" "}
-              {worker.location ||
-                "Not specified"}
-            </span>
+            <span>📍 {worker.location || "Not specified"}</span>
 
-            <span>
-              💼{" "}
-              {worker.experience ||
-                "Not specified"}
-            </span>
+            <span>💼 {worker.experience || "Not specified"}</span>
 
-            <span>
-              ⭐{" "}
-              {worker.rating ??
-                0}
-            </span>
+            <span>⭐ {worker.rating ?? 0}</span>
 
-            <span>
-              🕒{" "}
-              {worker.availability ||
-                "Not specified"}
-            </span>
+            <span>🕒 {worker.availability || "Not specified"}</span>
           </div>
 
           {/* =================================================
               SKILLS
           ================================================= */}
 
-          {skills.length >
-            0 && (
+          {skills.length > 0 && (
             <div className="profile-section">
-              <h2>
-                Skills
-              </h2>
+              <h2>Skills</h2>
 
               <div className="profile-skills">
-                {skills.map(
-                  (skill) => (
-                    <span
-                      key={
-                        skill
-                      }
-                    >
-                      {skill}
-                    </span>
-                  )
-                )}
+                {skills.map((skill) => (
+                  <span key={skill}>{skill}</span>
+                ))}
               </div>
             </div>
           )}
@@ -1082,15 +734,9 @@ function WorkerProfile() {
 
           {worker.description && (
             <div className="profile-section">
-              <h2>
-                About
-              </h2>
+              <h2>About</h2>
 
-              <p className="profile-description">
-                {
-                  worker.description
-                }
-              </p>
+              <p className="profile-description">{worker.description}</p>
             </div>
           )}
 
@@ -1100,18 +746,10 @@ function WorkerProfile() {
 
           <div className="profile-salary">
             <div>
-              <small>
-                Expected Salary
-              </small>
+              <small>Expected Salary</small>
 
               <strong>
-                ₹
-                {Number(
-                  worker.salary ||
-                    0
-                ).toLocaleString(
-                  "en-IN"
-                )}
+                ₹{Number(worker.salary || 0).toLocaleString("en-IN")}
                 /month
               </strong>
             </div>
@@ -1121,11 +759,20 @@ function WorkerProfile() {
             {!isOwner && (
               <button
                 type="button"
-                onClick={
-                  handleOpenContact
+                onClick={handleOpenContact}
+                disabled={
+                  contactStatusLoading ||
+                  contactRequest?.status === "pending" ||
+                  contactRequest?.status === "accepted"
                 }
               >
-                Contact Worker →
+                {contactStatusLoading
+                  ? "Checking Request..."
+                  : contactRequest?.status === "pending"
+                    ? "⏳ Request Pending"
+                    : contactRequest?.status === "accepted"
+                      ? "✓ Request Accepted"
+                      : "Contact Worker →"}
               </button>
             )}
           </div>
@@ -1137,14 +784,11 @@ function WorkerProfile() {
           {isOwner && (
             <div className="profile-management">
               <div>
-                <strong>
-                  Manage Your Profile
-                </strong>
+                <strong>Manage Your Profile</strong>
 
                 <p>
-                  Update your information,
-                  profile photo or remove your
-                  worker profile.
+                  Update your information, profile photo or remove your worker
+                  profile.
                 </p>
               </div>
 
@@ -1152,9 +796,7 @@ function WorkerProfile() {
                 <button
                   className="edit-profile-btn"
                   type="button"
-                  onClick={
-                    handleOpenEdit
-                  }
+                  onClick={handleOpenEdit}
                 >
                   ✏️ Edit Profile
                 </button>
@@ -1162,16 +804,10 @@ function WorkerProfile() {
                 <button
                   className="delete-profile-btn"
                   type="button"
-                  onClick={
-                    handleDeleteWorker
-                  }
-                  disabled={
-                    deleting
-                  }
+                  onClick={handleDeleteWorker}
+                  disabled={deleting}
                 >
-                  {deleting
-                    ? "Deleting..."
-                    : "🗑 Delete Profile"}
+                  {deleting ? "Deleting..." : "🗑 Delete Profile"}
                 </button>
               </div>
             </div>
@@ -1183,479 +819,314 @@ function WorkerProfile() {
           EDIT PROFILE MODAL
       ===================================================== */}
 
-      {isOwner &&
-        showEditForm && (
+      {isOwner && showEditForm && (
+        <div className="edit-overlay" onClick={handleCloseEdit}>
           <div
-            className="edit-overlay"
-            onClick={
-              handleCloseEdit
-            }
+            className="edit-modal"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="edit-modal"
-              onClick={(
-                event
-              ) =>
-                event.stopPropagation()
-              }
+            <button
+              className="edit-close"
+              type="button"
+              disabled={updating || avatarUploading || avatarRemoving}
+              onClick={handleCloseEdit}
             >
-              <button
-                className="edit-close"
-                type="button"
-                disabled={
-                  updating ||
-                  avatarUploading ||
-                  avatarRemoving
-                }
-                onClick={
-                  handleCloseEdit
-                }
-              >
-                ×
-              </button>
+              ×
+            </button>
 
-              <span className="edit-label">
-                EDIT WORKER
-              </span>
+            <span className="edit-label">EDIT WORKER</span>
 
-              <h2>
-                Edit Profile
-              </h2>
+            <h2>Edit Profile</h2>
 
-              <p className="edit-intro">
-                Update your worker information
-                and profile photo below.
-              </p>
+            <p className="edit-intro">
+              Update your worker information and profile photo below.
+            </p>
 
-              {/* =============================================
+            {/* =============================================
                   PROFILE PHOTO
               ============================================= */}
 
-              <div className="worker-edit-photo-section">
-                <ProfileAvatar
-                  person={
-                    worker
-                  }
-                  fallback={
-                    worker.emoji ||
-                    "👨‍🍳"
-                  }
-                  className="worker-edit-avatar"
-                  alt={
-                    worker.name
-                  }
+            <div className="worker-edit-photo-section">
+              <ProfileAvatar
+                person={worker}
+                fallback={worker.emoji || "👨‍🍳"}
+                className="worker-edit-avatar"
+                alt={worker.name}
+              />
+
+              <div className="worker-edit-photo-info">
+                <strong>Profile Photo</strong>
+
+                <p>
+                  Add a clear photo so local employers can recognise you. If you
+                  remove it, your worker avatar will be shown.
+                </p>
+
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange}
+                  className="worker-edit-photo-input"
                 />
 
-                <div className="worker-edit-photo-info">
-                  <strong>
-                    Profile Photo
-                  </strong>
+                <div className="worker-edit-photo-actions">
+                  <button
+                    type="button"
+                    className="worker-change-photo-btn"
+                    onClick={handleChoosePhoto}
+                    disabled={avatarUploading || avatarRemoving}
+                  >
+                    {avatarUploading
+                      ? "Uploading..."
+                      : worker.avatarFileId
+                        ? "📷 Change Photo"
+                        : "📷 Add Photo"}
+                  </button>
 
-                  <p>
-                    Add a clear photo so local
-                    employers can recognise you.
-                    If you remove it, your worker
-                    avatar will be shown.
-                  </p>
-
-                  <input
-                    ref={
-                      photoInputRef
-                    }
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={
-                      handlePhotoChange
-                    }
-                    className="worker-edit-photo-input"
-                  />
-
-                  <div className="worker-edit-photo-actions">
+                  {worker.avatarFileId && (
                     <button
                       type="button"
-                      className="worker-change-photo-btn"
-                      onClick={
-                        handleChoosePhoto
-                      }
-                      disabled={
-                        avatarUploading ||
-                        avatarRemoving
-                      }
+                      className="worker-remove-photo-btn"
+                      onClick={handleRemovePhoto}
+                      disabled={avatarUploading || avatarRemoving}
                     >
-                      {avatarUploading
-                        ? "Uploading..."
-                        : worker.avatarFileId
-                          ? "📷 Change Photo"
-                          : "📷 Add Photo"}
+                      {avatarRemoving ? "Removing..." : "Remove Photo"}
                     </button>
-
-                    {worker.avatarFileId && (
-                      <button
-                        type="button"
-                        className="worker-remove-photo-btn"
-                        onClick={
-                          handleRemovePhoto
-                        }
-                        disabled={
-                          avatarUploading ||
-                          avatarRemoving
-                        }
-                      >
-                        {avatarRemoving
-                          ? "Removing..."
-                          : "Remove Photo"}
-                      </button>
-                    )}
-                  </div>
-
-                  <small>
-                    JPG, PNG or WebP · Maximum
-                    1 MB
-                  </small>
+                  )}
                 </div>
-              </div>
 
-              {/* =============================================
+                <small>JPG, PNG or WebP · Maximum 1 MB</small>
+              </div>
+            </div>
+
+            {/* =============================================
                   EDIT FORM
               ============================================= */}
 
-              <form
-                className="edit-worker-form"
-                onSubmit={
-                  handleUpdateWorker
-                }
-              >
-                <label>
-                  Full Name
+            <form className="edit-worker-form" onSubmit={handleUpdateWorker}>
+              <label>
+                Full Name
+                <input
+                  type="text"
+                  name="name"
+                  value={editData.name}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
 
-                  <input
-                    type="text"
-                    name="name"
-                    value={
-                      editData.name
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  />
-                </label>
+              <label>
+                Phone Number
+                <input
+                  type="tel"
+                  name="phone"
+                  value={editData.phone}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
 
-                <label>
-                  Phone Number
-
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={
-                      editData.phone
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  Primary Skill
-
-                  <select
-                    name="role"
-                    value={
-                      editData.role
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  >
-                    <option value="">
-                      Select skill
-                    </option>
-
-                    <option value="chef">
-                      Chef / Cook
-                    </option>
-
-                    <option value="baker">
-                      Baker
-                    </option>
-
-                    <option value="fast-food">
-                      Fast Food Specialist
-                    </option>
-
-                    <option value="halwai">
-                      Halwai
-                    </option>
-
-                    <option value="helper">
-                      Kitchen Helper
-                    </option>
-                  </select>
-                </label>
-
-                <label>
-                  Experience
-
-                  <select
-                    name="experience"
-                    value={
-                      editData.experience
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  >
-                    <option value="">
-                      Select experience
-                    </option>
-
-                    <option value="0-1">
-                      0–1 year
-                    </option>
-
-                    <option value="1-3">
-                      1–3 years
-                    </option>
-
-                    <option value="3-5">
-                      3–5 years
-                    </option>
-
-                    <option value="5+">
-                      5+ years
-                    </option>
-                  </select>
-                </label>
-
-                <label>
-                  Location
-
-                  <input
-                    type="text"
-                    name="location"
-                    value={
-                      editData.location
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  Availability
-
-                  <select
-                    name="availability"
-                    value={
-                      editData.availability
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  >
-                    <option value="">
-                      Select availability
-                    </option>
-
-                    <option value="full-time">
-                      Full Time
-                    </option>
-
-                    <option value="part-time">
-                      Part Time
-                    </option>
-
-                    <option value="both">
-                      Full / Part Time
-                    </option>
-                  </select>
-                </label>
-
-                <label>
-                  Expected Monthly Salary (₹)
-
-                  <input
-                    type="number"
-                    name="salary"
-                    min="0"
-                    value={
-                      editData.salary
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    required
-                  />
-                </label>
-
-                <label className="edit-full-field">
-                  About Your Skills
-
-                  <textarea
-                    name="description"
-                    rows="4"
-                    value={
-                      editData.description
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    placeholder="Tell businesses about your skills..."
-                  />
-                </label>
-
-                <button
-                  className="save-profile-btn"
-                  type="submit"
-                  disabled={
-                    updating ||
-                    avatarUploading ||
-                    avatarRemoving
-                  }
+              <label>
+                Primary Skill
+                <select
+                  name="role"
+                  value={editData.role}
+                  onChange={handleEditChange}
+                  required
                 >
-                  {updating
-                    ? "Saving Changes..."
-                    : "Save Changes →"}
-                </button>
-              </form>
-            </div>
+                  <option value="">Select skill</option>
+
+                  <option value="chef">Chef / Cook</option>
+
+                  <option value="baker">Baker</option>
+
+                  <option value="fast-food">Fast Food Specialist</option>
+
+                  <option value="halwai">Halwai</option>
+
+                  <option value="helper">Kitchen Helper</option>
+                </select>
+              </label>
+
+              <label>
+                Experience
+                <select
+                  name="experience"
+                  value={editData.experience}
+                  onChange={handleEditChange}
+                  required
+                >
+                  <option value="">Select experience</option>
+
+                  <option value="0-1">0–1 year</option>
+
+                  <option value="1-3">1–3 years</option>
+
+                  <option value="3-5">3–5 years</option>
+
+                  <option value="5+">5+ years</option>
+                </select>
+              </label>
+
+              <label>
+                Location
+                <input
+                  type="text"
+                  name="location"
+                  value={editData.location}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
+
+              <label>
+                Availability
+                <select
+                  name="availability"
+                  value={editData.availability}
+                  onChange={handleEditChange}
+                  required
+                >
+                  <option value="">Select availability</option>
+
+                  <option value="full-time">Full Time</option>
+
+                  <option value="part-time">Part Time</option>
+
+                  <option value="both">Full / Part Time</option>
+                </select>
+              </label>
+
+              <label>
+                Expected Monthly Salary (₹)
+                <input
+                  type="number"
+                  name="salary"
+                  min="0"
+                  value={editData.salary}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
+
+              <label className="edit-full-field">
+                About Your Skills
+                <textarea
+                  name="description"
+                  rows="4"
+                  value={editData.description}
+                  onChange={handleEditChange}
+                  placeholder="Tell businesses about your skills..."
+                />
+              </label>
+
+              <button
+                className="save-profile-btn"
+                type="submit"
+                disabled={updating || avatarUploading || avatarRemoving}
+              >
+                {updating ? "Saving Changes..." : "Save Changes →"}
+              </button>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
       {/* =====================================================
           CONTACT MODAL - NOT FOR OWNER
       ===================================================== */}
 
-      {!isOwner &&
-        showContactForm && (
+      {!isOwner && showContactForm && (
+        <div
+          className="contact-overlay"
+          onClick={() => setShowContactForm(false)}
+        >
           <div
-            className="contact-overlay"
-            onClick={() =>
-              setShowContactForm(
-                false
-              )
-            }
+            className="contact-modal"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="contact-modal"
-              onClick={(
-                event
-              ) =>
-                event.stopPropagation()
-              }
+            <button
+              className="contact-close"
+              type="button"
+              onClick={() => setShowContactForm(false)}
             >
-              <button
-                className="contact-close"
-                type="button"
-                onClick={() =>
-                  setShowContactForm(
-                    false
-                  )
-                }
-              >
-                ×
-              </button>
+              ×
+            </button>
 
-              {!submitted ? (
-                <>
-                  <span className="contact-label">
-                    CONTACT WORKER
-                  </span>
+            {!submitted ? (
+              <>
+                <span className="contact-label">CONTACT WORKER</span>
 
-                  <h2>
-                    Contact{" "}
-                    {worker.name}
-                  </h2>
+                <h2>Contact {worker.name}</h2>
 
-                  <p>
-                    Send a request to discuss
-                    your job opportunity.
-                  </p>
+                <p>Send a request to discuss your job opportunity.</p>
 
-                  <form
-                    onSubmit={
-                      handleSubmit
-                    }
-                  >
-                    <label>
-                      Your Name
+                <form onSubmit={handleSubmit}>
+                  <label>
+                    Your Name
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Enter your name"
+                      required
+                    />
+                  </label>
 
-                      <input
-                        type="text"
-                        name="name"
-                        placeholder="Enter your name"
-                        required
-                      />
-                    </label>
+                  <label>
+                    Mobile Number
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="Enter mobile number"
+                      required
+                    />
+                  </label>
 
-                    <label>
-                      Mobile Number
+                  <label>
+                    Work Location
+                    <input
+                      type="text"
+                      name="workLocation"
+                      placeholder="Where should the worker come for work?"
+                      required
+                    />
+                  </label>
 
-                      <input
-                        type="tel"
-                        name="phone"
-                        placeholder="Enter mobile number"
-                        required
-                      />
-                    </label>
+                  <label>
+                    Message
+                    <textarea
+                      name="message"
+                      placeholder="Tell the worker about your requirement..."
+                      rows="4"
+                      required
+                    />
+                  </label>
 
-                    <label>
-                      Message
-
-                      <textarea
-                        name="message"
-                        placeholder="Tell the worker about your requirement..."
-                        rows="4"
-                        required
-                      />
-                    </label>
-
-                    <button
-                      className="contact-submit"
-                      type="submit"
-                    >
-                      Send Request →
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div className="contact-success">
-                  <div className="success-icon">
-                    ✓
-                  </div>
-
-                  <h2>
-                    Request Sent!
-                  </h2>
-
-                  <p>
-                    Your request for{" "}
-                    {worker.name} has been
-                    submitted successfully.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowContactForm(
-                        false
-                      )
-                    }
-                  >
-                    Done
+                  <button className="contact-submit" type="submit">
+                    Send Request →
                   </button>
-                </div>
-              )}
-            </div>
+                </form>
+              </>
+            ) : (
+              <div className="contact-success">
+                <div className="success-icon">✓</div>
+
+                <h2>Request Sent!</h2>
+
+                <p>
+                  Your request for {worker.name} has been submitted
+                  successfully.
+                </p>
+
+                <button type="button" onClick={() => setShowContactForm(false)}>
+                  Done
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
     </section>
   );
 }

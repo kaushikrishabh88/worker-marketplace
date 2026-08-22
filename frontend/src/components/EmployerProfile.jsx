@@ -1,105 +1,59 @@
-import {
-  useRef,
-  useState,
-} from "react";
+import { useRef, useState } from "react";
 
 import ProfileAvatar from "./ProfileAvatar";
+import { useToast } from "./useToast";
 
-const API_URL =
-  "http://localhost:5000";
+const API_URL = "http://localhost:5000";
 
-function EmployerProfile({
-  user,
-  onUserUpdated,
-}) {
-  const fileInputRef =
-    useRef(null);
+function EmployerProfile({ user, onUserUpdated }) {
+  const toast = useToast();
 
-  const [currentUser, setCurrentUser] =
-    useState(user);
+  const fileInputRef = useRef(null);
 
-  const [editing, setEditing] =
-    useState(false);
+  const [currentUser, setCurrentUser] = useState(user);
 
-  const [uploading, setUploading] =
-    useState(false);
+  const [editing, setEditing] = useState(false);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const [removingPhoto, setRemovingPhoto] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [deleting, setDeleting] =
-    useState(false);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [deleting, setDeleting] = useState(false);
 
-  const [success, setSuccess] =
-    useState("");
+  // Sirf form/file validation ke inline errors ke liye.
+  const [error, setError] = useState("");
 
-  const [form, setForm] =
-    useState({
-      name: user?.name || "",
-      phone: user?.phone || "",
-      businessName:
-        user?.businessName || "",
-      location:
-        user?.location || "",
-      aboutBusiness:
-        user?.aboutBusiness || "",
-    });
+  const [form, setForm] = useState({
+    name: user?.name || "",
+    phone: user?.phone || "",
+    businessName: user?.businessName || "",
+    location: user?.location || "",
+    aboutBusiness: user?.aboutBusiness || "",
+  });
 
-  const token =
-    localStorage.getItem(
-      "workmateToken"
-    );
+  const token = localStorage.getItem("workmateToken");
 
   /* =========================================================
      UPDATE USER EVERYWHERE
   ========================================================= */
 
-  const updateUserEverywhere = (
-    updatedUser
-  ) => {
-    setCurrentUser(
-      updatedUser
-    );
+  const updateUserEverywhere = (updatedUser) => {
+    setCurrentUser(updatedUser);
 
     setForm({
-      name:
-        updatedUser?.name || "",
-
-      phone:
-        updatedUser?.phone || "",
-
-      businessName:
-        updatedUser?.businessName ||
-        "",
-
-      location:
-        updatedUser?.location || "",
-
-      aboutBusiness:
-        updatedUser?.aboutBusiness ||
-        "",
+      name: updatedUser?.name || "",
+      phone: updatedUser?.phone || "",
+      businessName: updatedUser?.businessName || "",
+      location: updatedUser?.location || "",
+      aboutBusiness: updatedUser?.aboutBusiness || "",
     });
 
-    localStorage.setItem(
-      "workmateUser",
-      JSON.stringify(
-        updatedUser
-      )
-    );
+    localStorage.setItem("workmateUser", JSON.stringify(updatedUser));
 
-    if (
-      typeof onUserUpdated ===
-      "function"
-    ) {
-      onUserUpdated(
-        updatedUser
-      );
+    if (typeof onUserUpdated === "function") {
+      onUserUpdated(updatedUser);
     }
   };
 
@@ -107,20 +61,17 @@ function EmployerProfile({
      FORM CHANGE
   ========================================================= */
 
-  const handleChange = (
-    event
-  ) => {
-    const {
-      name,
-      value,
-    } = event.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-    setForm(
-      (previous) => ({
-        ...previous,
-        [name]: value,
-      })
-    );
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    if (error) {
+      setError("");
+    }
   };
 
   /* =========================================================
@@ -129,25 +80,13 @@ function EmployerProfile({
 
   const handleEdit = () => {
     setError("");
-    setSuccess("");
 
     setForm({
-      name:
-        currentUser?.name || "",
-
-      phone:
-        currentUser?.phone || "",
-
-      businessName:
-        currentUser?.businessName ||
-        "",
-
-      location:
-        currentUser?.location || "",
-
-      aboutBusiness:
-        currentUser?.aboutBusiness ||
-        "",
+      name: currentUser?.name || "",
+      phone: currentUser?.phone || "",
+      businessName: currentUser?.businessName || "",
+      location: currentUser?.location || "",
+      aboutBusiness: currentUser?.aboutBusiness || "",
     });
 
     setEditing(true);
@@ -159,25 +98,13 @@ function EmployerProfile({
 
   const handleCancel = () => {
     setError("");
-    setSuccess("");
 
     setForm({
-      name:
-        currentUser?.name || "",
-
-      phone:
-        currentUser?.phone || "",
-
-      businessName:
-        currentUser?.businessName ||
-        "",
-
-      location:
-        currentUser?.location || "",
-
-      aboutBusiness:
-        currentUser?.aboutBusiness ||
-        "",
+      name: currentUser?.name || "",
+      phone: currentUser?.phone || "",
+      businessName: currentUser?.businessName || "",
+      location: currentUser?.location || "",
+      aboutBusiness: currentUser?.aboutBusiness || "",
     });
 
     setEditing(false);
@@ -187,110 +114,69 @@ function EmployerProfile({
      SAVE EMPLOYER PROFILE
   ========================================================= */
 
-  const handleSave =
-    async (event) => {
-      event.preventDefault();
+  const handleSave = async (event) => {
+    event.preventDefault();
+
+    setError("");
+
+    if (!form.name.trim()) {
+      setError("Full name is required.");
+      return;
+    }
+
+    if (!token) {
+      toast.error("Please login again.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const response = await fetch(`${API_URL}/api/employer/profile`, {
+        method: "PUT",
+
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          businessName: form.businessName.trim(),
+          location: form.location.trim(),
+          aboutBusiness: form.aboutBusiness.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to update profile.");
+      }
+
+      updateUserEverywhere(data.user);
+
+      setEditing(false);
 
       setError("");
-      setSuccess("");
 
-      if (
-        !form.name.trim()
-      ) {
-        setError(
-          "Full name is required."
-        );
+      toast.success("Profile updated successfully.");
+    } catch (error) {
+      console.error("Employer profile update error:", error);
 
-        return;
-      }
-
-      if (!token) {
-        setError(
-          "Please login again."
-        );
-
-        return;
-      }
-
-      try {
-        setSaving(true);
-
-        const response =
-          await fetch(
-            `${API_URL}/api/employer/profile`,
-            {
-              method: "PUT",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-
-                Authorization:
-                  `Bearer ${token}`,
-              },
-
-              body: JSON.stringify({
-                name:
-                  form.name.trim(),
-
-                phone:
-                  form.phone.trim(),
-
-                businessName:
-                  form.businessName.trim(),
-
-                location:
-                  form.location.trim(),
-
-                aboutBusiness:
-                  form.aboutBusiness.trim(),
-              }),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to update profile."
-          );
-        }
-
-        updateUserEverywhere(
-          data.user
-        );
-
-        setEditing(false);
-
-        setSuccess(
-          "Profile updated successfully."
-        );
-      } catch (error) {
-        console.error(
-          "Employer profile update error:",
-          error
-        );
-
-        setError(
-          error.message ||
-            "Unable to update profile."
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
+      toast.error(error.message || "Unable to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /* =========================================================
      CHOOSE PHOTO
   ========================================================= */
 
   const handleChoosePhoto = () => {
-    if (
-      uploading ||
-      removingPhoto
-    ) {
+    if (uploading || removingPhoto) {
       return;
     }
 
@@ -301,312 +187,205 @@ function EmployerProfile({
      UPLOAD / CHANGE PHOTO
   ========================================================= */
 
-  const handlePhotoChange =
-    async (event) => {
-      const file =
-        event.target.files?.[0];
+  const handlePhotoChange = async (event) => {
+    const file = event.target.files?.[0];
 
-      event.target.value = "";
+    event.target.value = "";
 
-      if (!file) {
-        return;
+    if (!file) {
+      return;
+    }
+
+    setError("");
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please choose a JPG, PNG or WebP image.");
+      return;
+    }
+
+    const maxSize = 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError("Photo must be 1 MB or smaller.");
+      return;
+    }
+
+    if (!token) {
+      toast.error("Please login again.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+
+      formData.append("avatar", file);
+
+      const response = await fetch(`${API_URL}/api/profile/avatar`, {
+        method: "POST",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to upload profile photo.");
       }
+
+      updateUserEverywhere(data.user);
 
       setError("");
-      setSuccess("");
 
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ];
+      toast.success("Profile photo updated successfully.");
+    } catch (error) {
+      console.error("Employer avatar upload error:", error);
 
-      if (
-        !allowedTypes.includes(
-          file.type
-        )
-      ) {
-        setError(
-          "Please choose a JPG, PNG or WebP image."
-        );
-
-        return;
-      }
-
-      const maxSize =
-        1024 * 1024;
-
-      if (
-        file.size > maxSize
-      ) {
-        setError(
-          "Photo must be 1 MB or smaller."
-        );
-
-        return;
-      }
-
-      if (!token) {
-        setError(
-          "Please login again."
-        );
-
-        return;
-      }
-
-      try {
-        setUploading(true);
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "avatar",
-          file
-        );
-
-        const response =
-          await fetch(
-            `${API_URL}/api/profile/avatar`,
-            {
-              method: "POST",
-
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-
-              body: formData,
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to upload profile photo."
-          );
-        }
-
-        updateUserEverywhere(
-          data.user
-        );
-
-        setSuccess(
-          "Profile photo updated successfully."
-        );
-      } catch (error) {
-        console.error(
-          "Employer avatar upload error:",
-          error
-        );
-
-        setError(
-          error.message ||
-            "Unable to update profile photo."
-        );
-      } finally {
-        setUploading(false);
-      }
-    };
+      toast.error(error.message || "Unable to update profile photo.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   /* =========================================================
      REMOVE PHOTO
   ========================================================= */
 
-  const handleRemovePhoto =
-    async () => {
-      if (
-        !currentUser?.avatarFileId
-      ) {
-        return;
+  const handleRemovePhoto = async () => {
+    if (!currentUser?.avatarFileId) {
+      return;
+    }
+
+    const confirmed = window.confirm("Remove your profile photo?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+
+    if (!token) {
+      toast.error("Please login again.");
+      return;
+    }
+
+    try {
+      setRemovingPhoto(true);
+
+      const response = await fetch(`${API_URL}/api/profile/avatar`, {
+        method: "DELETE",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to remove profile photo.");
       }
 
-      const confirmed =
-        window.confirm(
-          "Remove your profile photo?"
-        );
-
-      if (!confirmed) {
-        return;
-      }
+      updateUserEverywhere(data.user);
 
       setError("");
-      setSuccess("");
 
-      if (!token) {
-        setError(
-          "Please login again."
-        );
+      toast.success("Profile photo removed successfully.");
+    } catch (error) {
+      console.error("Remove employer photo error:", error);
 
-        return;
-      }
-
-      try {
-        setRemovingPhoto(
-          true
-        );
-
-        const response =
-          await fetch(
-            `${API_URL}/api/profile/avatar`,
-            {
-              method: "DELETE",
-
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to remove profile photo."
-          );
-        }
-
-        updateUserEverywhere(
-          data.user
-        );
-
-        setSuccess(
-          "Profile photo removed successfully."
-        );
-      } catch (error) {
-        console.error(
-          "Remove employer photo error:",
-          error
-        );
-
-        setError(
-          error.message ||
-            "Unable to remove profile photo."
-        );
-      } finally {
-        setRemovingPhoto(
-          false
-        );
-      }
-    };
+      toast.error(error.message || "Unable to remove profile photo.");
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
 
   /* =========================================================
      DELETE ACCOUNT
   ========================================================= */
 
-  const handleDeleteAccount =
-    async () => {
-      const firstConfirm =
-        window.confirm(
-          "Delete your employer account? Your jobs, applications for those jobs and hiring requests will also be deleted."
-        );
+  const handleDeleteAccount = async () => {
+    const firstConfirm = window.confirm(
+      "Delete your employer account? Your jobs, applications for those jobs and hiring requests will also be deleted.",
+    );
 
-      if (!firstConfirm) {
-        return;
+    if (!firstConfirm) {
+      return;
+    }
+
+    const secondConfirm = window.confirm(
+      "This cannot be undone. Are you sure you want to permanently delete your account?",
+    );
+
+    if (!secondConfirm) {
+      return;
+    }
+
+    setError("");
+
+    if (!token) {
+      toast.error("Please login again.");
+      return;
+    }
+
+    try {
+      setDeleting(true);
+
+      const response = await fetch(`${API_URL}/api/employer/account`, {
+        method: "DELETE",
+
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to delete account.");
       }
 
-      const secondConfirm =
-        window.confirm(
-          "This cannot be undone. Are you sure you want to permanently delete your account?"
-        );
+      /*
+       * Delete success ke turant baad redirect hota hai.
+       * Isliye yahan success toast intentionally nahi dikhaya gaya,
+       * warna redirect ke wajah se toast immediately disappear ho jayega.
+       */
 
-      if (!secondConfirm) {
-        return;
-      }
+      localStorage.removeItem("workmateToken");
+      localStorage.removeItem("workmateUser");
 
-      setError("");
-      setSuccess("");
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Delete employer account error:", error);
 
-      if (!token) {
-        setError(
-          "Please login again."
-        );
+      toast.error(error.message || "Unable to delete account.");
 
-        return;
-      }
-
-      try {
-        setDeleting(true);
-
-        const response =
-          await fetch(
-            `${API_URL}/api/employer/account`,
-            {
-              method: "DELETE",
-
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to delete account."
-          );
-        }
-
-        localStorage.removeItem(
-          "workmateToken"
-        );
-
-        localStorage.removeItem(
-          "workmateUser"
-        );
-
-        window.location.href =
-          "/";
-      } catch (error) {
-        console.error(
-          "Delete employer account error:",
-          error
-        );
-
-        setError(
-          error.message ||
-            "Unable to delete account."
-        );
-
-        setDeleting(false);
-      }
-    };
+      setDeleting(false);
+    }
+  };
 
   /* =========================================================
      PAGE
   ========================================================= */
 
   return (
-    <section
-      className="employer-profile"
-      id="employer-profile"
-    >
+    <section className="employer-profile" id="employer-profile">
       <div className="employer-profile-card">
         <div className="employer-profile-heading">
-          <span>
-            EMPLOYER PROFILE
-          </span>
+          <span>EMPLOYER PROFILE</span>
 
-          <h2>
-            Your business profile.
-          </h2>
+          <h2>Your business profile.</h2>
 
           <p>
-            Manage your employer
-            details and profile photo.
-            Workers can use this
-            information to recognise
-            your business.
+            Manage your employer details and profile photo. Workers can use this
+            information to recognise your business.
           </p>
         </div>
 
@@ -615,39 +394,25 @@ function EmployerProfile({
 
           <div className="employer-profile-avatar-area">
             <ProfileAvatar
-              person={
-                currentUser
-              }
+              person={currentUser}
               fallback="🏢"
               className="employer-profile-avatar"
-              alt={
-                currentUser?.name ||
-                "Employer"
-              }
+              alt={currentUser?.name || "Employer"}
             />
 
             <input
-              ref={
-                fileInputRef
-              }
+              ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={
-                handlePhotoChange
-              }
+              onChange={handlePhotoChange}
               className="employer-profile-file-input"
             />
 
             <button
               type="button"
               className="employer-profile-photo-button"
-              onClick={
-                handleChoosePhoto
-              }
-              disabled={
-                uploading ||
-                removingPhoto
-              }
+              onClick={handleChoosePhoto}
+              disabled={uploading || removingPhoto}
             >
               {uploading
                 ? "Uploading..."
@@ -660,24 +425,14 @@ function EmployerProfile({
               <button
                 type="button"
                 className="employer-profile-remove-photo-button"
-                onClick={
-                  handleRemovePhoto
-                }
-                disabled={
-                  uploading ||
-                  removingPhoto
-                }
+                onClick={handleRemovePhoto}
+                disabled={uploading || removingPhoto}
               >
-                {removingPhoto
-                  ? "Removing..."
-                  : "Remove Photo"}
+                {removingPhoto ? "Removing..." : "Remove Photo"}
               </button>
             )}
 
-            <small>
-              JPG, PNG or WebP ·
-              Maximum 1 MB
-            </small>
+            <small>JPG, PNG or WebP · Maximum 1 MB</small>
           </div>
 
           {/* DETAILS */}
@@ -686,240 +441,147 @@ function EmployerProfile({
             {!editing ? (
               <>
                 <div className="employer-profile-field">
-                  <span>
-                    Full Name
-                  </span>
+                  <span>Full Name</span>
 
-                  <strong>
-                    {currentUser?.name ||
-                      "Not added"}
-                  </strong>
+                  <strong>{currentUser?.name || "Not added"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    Email Address
-                  </span>
+                  <span>Email Address</span>
 
-                  <strong>
-                    {currentUser?.email ||
-                      "Not available"}
-                  </strong>
+                  <strong>{currentUser?.email || "Not available"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    Phone Number
-                  </span>
+                  <span>Phone Number</span>
 
-                  <strong>
-                    {currentUser?.phone ||
-                      "Not added"}
-                  </strong>
+                  <strong>{currentUser?.phone || "Not added"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    Business / Shop Name
-                  </span>
+                  <span>Business / Shop Name</span>
 
-                  <strong>
-                    {currentUser?.businessName ||
-                      "Not added"}
-                  </strong>
+                  <strong>{currentUser?.businessName || "Not added"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    Location
-                  </span>
+                  <span>Location</span>
 
-                  <strong>
-                    {currentUser?.location ||
-                      "Not added"}
-                  </strong>
+                  <strong>{currentUser?.location || "Not added"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    About Business
-                  </span>
+                  <span>About Business</span>
 
-                  <strong>
-                    {currentUser?.aboutBusiness ||
-                      "Not added"}
-                  </strong>
+                  <strong>{currentUser?.aboutBusiness || "Not added"}</strong>
                 </div>
 
                 <div className="employer-profile-field">
-                  <span>
-                    Account Type
-                  </span>
+                  <span>Account Type</span>
 
-                  <strong>
-                    Employer
-                  </strong>
+                  <strong>Employer</strong>
                 </div>
 
                 <button
                   type="button"
                   className="employer-profile-edit-button"
-                  onClick={
-                    handleEdit
-                  }
+                  onClick={handleEdit}
                 >
                   ✏️ Edit Profile
                 </button>
               </>
             ) : (
-              <form
-                className="employer-profile-form"
-                onSubmit={
-                  handleSave
-                }
-              >
+              <form className="employer-profile-form" onSubmit={handleSave}>
                 <label>
-                  <span>
-                    Full Name
-                  </span>
+                  <span>Full Name</span>
 
                   <input
                     type="text"
                     name="name"
-                    value={
-                      form.name
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.name}
+                    onChange={handleChange}
                     placeholder="Your full name"
                     required
                   />
                 </label>
 
                 <label>
-                  <span>
-                    Email Address
-                  </span>
+                  <span>Email Address</span>
 
                   <input
                     type="email"
-                    value={
-                      currentUser?.email ||
-                      ""
-                    }
+                    value={currentUser?.email || ""}
                     disabled
                   />
 
-                  <small>
-                    Email cannot be
-                    changed here.
-                  </small>
+                  <small>Email cannot be changed here.</small>
                 </label>
 
                 <label>
-                  <span>
-                    Phone Number
-                  </span>
+                  <span>Phone Number</span>
 
                   <input
                     type="tel"
                     name="phone"
-                    value={
-                      form.phone
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.phone}
+                    onChange={handleChange}
                     placeholder="Phone number"
                   />
                 </label>
 
                 <label>
-                  <span>
-                    Business / Shop Name
-                  </span>
+                  <span>Business / Shop Name</span>
 
                   <input
                     type="text"
                     name="businessName"
-                    value={
-                      form.businessName
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.businessName}
+                    onChange={handleChange}
                     placeholder="Business or shop name"
                   />
                 </label>
 
                 <label>
-                  <span>
-                    Location
-                  </span>
+                  <span>Location</span>
 
                   <input
                     type="text"
                     name="location"
-                    value={
-                      form.location
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.location}
+                    onChange={handleChange}
                     placeholder="City or area"
                   />
                 </label>
 
                 <label>
-                  <span>
-                    About Business
-                  </span>
+                  <span>About Business</span>
 
                   <textarea
                     name="aboutBusiness"
-                    value={
-                      form.aboutBusiness
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.aboutBusiness}
+                    onChange={handleChange}
                     placeholder="Tell workers about your business..."
                     rows="5"
                     maxLength="500"
                   />
 
-                  <small>
-                    {
-                      form.aboutBusiness
-                        .length
-                    }
-                    /500
-                  </small>
+                  <small>{form.aboutBusiness.length}/500</small>
                 </label>
 
                 <div className="employer-profile-form-actions">
                   <button
                     type="submit"
                     className="employer-profile-save-button"
-                    disabled={
-                      saving
-                    }
+                    disabled={saving}
                   >
-                    {saving
-                      ? "Saving..."
-                      : "💾 Save Changes"}
+                    {saving ? "Saving..." : "💾 Save Changes"}
                   </button>
 
                   <button
                     type="button"
                     className="employer-profile-cancel-button"
-                    onClick={
-                      handleCancel
-                    }
-                    disabled={
-                      saving
-                    }
+                    onClick={handleCancel}
+                    disabled={saving}
                   >
                     Cancel
                   </button>
@@ -935,45 +597,27 @@ function EmployerProfile({
           </div>
         )}
 
-        {success && (
-          <div className="employer-profile-message employer-profile-success">
-            {success}
-          </div>
-        )}
-
         {/* DANGER ZONE */}
 
         <div className="employer-profile-danger-zone">
           <div>
-            <span>
-              DANGER ZONE
-            </span>
+            <span>DANGER ZONE</span>
 
-            <h3>
-              Delete Account
-            </h3>
+            <h3>Delete Account</h3>
 
             <p>
-              Permanently delete your
-              employer account, posted
-              jobs and related hiring
-              data.
+              Permanently delete your employer account, posted jobs and related
+              hiring data.
             </p>
           </div>
 
           <button
             type="button"
             className="employer-profile-delete-button"
-            onClick={
-              handleDeleteAccount
-            }
-            disabled={
-              deleting
-            }
+            onClick={handleDeleteAccount}
+            disabled={deleting}
           >
-            {deleting
-              ? "Deleting..."
-              : "🗑️ Delete Account"}
+            {deleting ? "Deleting..." : "🗑️ Delete Account"}
           </button>
         </div>
       </div>

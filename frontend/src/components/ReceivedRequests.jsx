@@ -5,24 +5,17 @@ import ProfileAvatar from "./ProfileAvatar";
 function ReceivedRequests() {
   const toast = useToast();
 
-  const token =
-    localStorage.getItem("workmateToken");
+  const token = localStorage.getItem("workmateToken");
 
-  const [requests, setRequests] =
-    useState([]);
+  const [requests, setRequests] = useState([]);
 
-  const [loading, setLoading] =
-    useState(Boolean(token));
+  const [loading, setLoading] = useState(Boolean(token));
 
-  const [error, setError] =
-    useState(
-      token
-        ? ""
-        : "Please login as a worker to view requests."
-    );
+  const [error, setError] = useState(
+    token ? "" : "Please login as a worker to view requests.",
+  );
 
-  const [updatingId, setUpdatingId] =
-    useState("");
+  const [updatingId, setUpdatingId] = useState("");
 
   /* =========================================================
      FETCH REQUESTS
@@ -42,35 +35,22 @@ function ReceivedRequests() {
           "http://localhost:5000/api/contact-requests/my",
           {
             headers: {
-              Authorization:
-                `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
 
-        const data =
-          await response.json();
+        const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Failed to load requests."
-          );
+          throw new Error(data.message || "Failed to load requests.");
         }
 
-        setRequests(
-          data.requests || []
-        );
+        setRequests(data.requests || []);
       } catch (error) {
-        console.error(
-          "Fetch received requests error:",
-          error
-        );
+        console.error("Fetch received requests error:", error);
 
-        setError(
-          error.message ||
-            "Unable to load received requests."
-        );
+        setError(error.message || "Unable to load received requests.");
       } finally {
         setLoading(false);
       }
@@ -83,10 +63,7 @@ function ReceivedRequests() {
      UPDATE STATUS
   ========================================================= */
 
-  const updateStatus = async (
-    requestId,
-    status
-  ) => {
+  const updateStatus = async (requestId, status) => {
     try {
       setUpdatingId(requestId);
       setError("");
@@ -97,63 +74,45 @@ function ReceivedRequests() {
           method: "PATCH",
 
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
 
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
 
           body: JSON.stringify({
             status,
           }),
-        }
+        },
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to update request."
-        );
+        throw new Error(data.message || "Failed to update request.");
       }
 
-      setRequests(
-        (previousRequests) =>
-          previousRequests.map(
-            (request) =>
-              request._id ===
-              requestId
-                ? {
-                    ...request,
-                    status,
-                  }
-                : request
-          )
+      setRequests((previousRequests) =>
+        previousRequests.map((request) =>
+          request._id === requestId
+            ? {
+                ...request,
+                status,
+              }
+            : request,
+        ),
       );
 
-      window.dispatchEvent(
-        new Event(
-          "workmate-badges-refresh"
-        )
-      );
+      window.dispatchEvent(new Event("workmate-badges-refresh"));
 
       toast.success(
         status === "accepted"
           ? "Employer request accepted successfully."
-          : "Employer request rejected successfully."
+          : "Employer request rejected successfully.",
       );
     } catch (error) {
-      console.error(
-        "Update request status error:",
-        error
-      );
+      console.error("Update request status error:", error);
 
-      const message =
-        error.message ||
-        "Unable to update request.";
+      const message = error.message || "Unable to update request.";
 
       setError(message);
 
@@ -168,83 +127,52 @@ function ReceivedRequests() {
   ========================================================= */
 
   return (
-    <section
-      className="received-requests"
-      id="received-requests"
-    >
+    <section className="received-requests" id="received-requests">
       <div className="received-requests-heading">
-        <span>
-          EMPLOYER REQUESTS
-        </span>
+        <span>EMPLOYER REQUESTS</span>
 
-        <h2>
-          Requests from local businesses.
-        </h2>
+        <h2>Requests from local businesses.</h2>
 
-        <p>
-          Review employers who are interested in
-          hiring you.
-        </p>
+        <p>Review employers who are interested in hiring you.</p>
       </div>
 
       {loading ? (
         <div className="request-empty-state">
-          <h3>
-            Loading requests...
-          </h3>
+          <h3>Loading requests...</h3>
         </div>
       ) : error ? (
         <div className="request-empty-state">
-          <h3>
-            Unable to load requests
-          </h3>
+          <h3>Unable to load requests</h3>
 
-          <p>
-            {error}
-          </p>
+          <p>{error}</p>
         </div>
-      ) : requests.length ===
-        0 ? (
+      ) : requests.length === 0 ? (
         <div className="request-empty-state">
-          <div className="request-empty-icon">
-            📩
-          </div>
+          <div className="request-empty-icon">📩</div>
 
-          <h3>
-            No requests yet
-          </h3>
+          <h3>No requests yet</h3>
 
           <p>
-            Employer requests will appear here
-            when someone contacts your worker
+            Employer requests will appear here when someone contacts your worker
             profile.
           </p>
         </div>
       ) : (
         <div className="request-list">
           {requests.map((request) => {
-            const requestStatus =
-              request.status ||
-              "pending";
+            const requestStatus = request.status || "pending";
 
-            const isUpdating =
-              updatingId ===
-              request._id;
+            const isUpdating = updatingId === request._id;
 
             return (
-              <article
-                className="request-card"
-                key={request._id}
-              >
+              <article className="request-card" key={request._id}>
                 {/* =========================================
                     EMPLOYER
                 ========================================= */}
 
                 <div className="request-card-top">
                   <ProfileAvatar
-                    person={
-                      request.employer
-                    }
+                    person={request.employer}
                     fallback="🏢"
                     className="request-employer-icon"
                     alt={
@@ -267,15 +195,8 @@ function ReceivedRequests() {
                         "Employer"}
                     </h3>
 
-                    {request.employer
-                      ?.email && (
-                      <p>
-                        ✉️{" "}
-                        {
-                          request.employer
-                            .email
-                        }
-                      </p>
+                    {request.employer?.email && (
+                      <p>✉️ {request.employer.email}</p>
                     )}
                   </div>
                 </div>
@@ -286,38 +207,21 @@ function ReceivedRequests() {
 
                 <div className="request-info">
                   <div>
-                    <span>
-                      📞 Phone
-                    </span>
+                    <span>📞 Phone</span>
 
-                    <strong>
-                      {request.phone ||
-                        "Not available"}
-                    </strong>
+                    <strong>{request.phone || "Not available"}</strong>
                   </div>
 
                   <div>
-                    <span>
-                      👨‍🍳 Worker
-                    </span>
+                    <span>👨‍🍳 Worker</span>
 
-                    <strong>
-                      {request.worker
-                        ?.name ||
-                        "Your Profile"}
-                    </strong>
+                    <strong>{request.worker?.name || "Your Profile"}</strong>
                   </div>
 
                   <div>
-                    <span>
-                      📍 Location
-                    </span>
+                    <span>📍 Work Location</span>
 
-                    <strong>
-                      {request.worker
-                        ?.location ||
-                        "Not specified"}
-                    </strong>
+                    <strong>{request.workLocation || "Not specified"}</strong>
                   </div>
                 </div>
 
@@ -326,14 +230,9 @@ function ReceivedRequests() {
                 ========================================= */}
 
                 <div className="request-message">
-                  <span>
-                    EMPLOYER MESSAGE
-                  </span>
+                  <span>EMPLOYER MESSAGE</span>
 
-                  <p>
-                    {request.message ||
-                      "No message provided."}
-                  </p>
+                  <p>{request.message || "No message provided."}</p>
                 </div>
 
                 {/* =========================================
@@ -341,63 +240,38 @@ function ReceivedRequests() {
                 ========================================= */}
 
                 <div className="request-date">
-                  Received{" "}
-                  {new Date(
-                    request.createdAt
-                  ).toLocaleString(
-                    "en-IN"
-                  )}
+                  Received {new Date(request.createdAt).toLocaleString("en-IN")}
                 </div>
 
                 {/* =========================================
                     ACTIONS
                 ========================================= */}
 
-                {requestStatus ===
-                "pending" ? (
+                {requestStatus === "pending" ? (
                   <div className="request-actions">
                     <button
                       type="button"
                       className="request-accept-btn"
-                      disabled={
-                        isUpdating
-                      }
-                      onClick={() =>
-                        updateStatus(
-                          request._id,
-                          "accepted"
-                        )
-                      }
+                      disabled={isUpdating}
+                      onClick={() => updateStatus(request._id, "accepted")}
                     >
-                      {isUpdating
-                        ? "Updating..."
-                        : "✓ Accept"}
+                      {isUpdating ? "Updating..." : "✓ Accept"}
                     </button>
 
                     <button
                       type="button"
                       className="request-reject-btn"
-                      disabled={
-                        isUpdating
-                      }
-                      onClick={() =>
-                        updateStatus(
-                          request._id,
-                          "rejected"
-                        )
-                      }
+                      disabled={isUpdating}
+                      onClick={() => updateStatus(request._id, "rejected")}
                     >
-                      {isUpdating
-                        ? "Updating..."
-                        : "✕ Reject"}
+                      {isUpdating ? "Updating..." : "✕ Reject"}
                     </button>
                   </div>
                 ) : (
                   <div
                     className={`request-final-status request-final-${requestStatus}`}
                   >
-                    {requestStatus ===
-                    "accepted"
+                    {requestStatus === "accepted"
                       ? "✓ You accepted this request"
                       : "✕ You rejected this request"}
                   </div>

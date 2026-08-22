@@ -22,8 +22,7 @@ function DashboardSummary({ user }) {
     setSentRequests,
   ] = useState([]);
 
-  const [jobs, setJobs] =
-    useState([]);
+  const [jobs, setJobs] = useState([]);
 
   const [
     workerProfile,
@@ -107,8 +106,7 @@ function DashboardSummary({ user }) {
 
           if (requestsResponse.ok) {
             setReceivedRequests(
-              requestsData.requests ||
-                []
+              requestsData.requests || []
             );
           }
 
@@ -299,6 +297,28 @@ function DashboardSummary({ user }) {
     );
   };
 
+  /* =========================================================
+     DASHBOARD CARD NAVIGATION
+  ========================================================= */
+
+  const scrollToSection = (
+    sectionId
+  ) => {
+    const section =
+      document.getElementById(
+        sectionId
+      );
+
+    if (!section) {
+      return;
+    }
+
+    section.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   if (!user) {
     return null;
   }
@@ -334,6 +354,7 @@ function DashboardSummary({ user }) {
       ) : user.role ===
         "worker" ? (
         <div className="dashboard-stat-grid">
+
           {/* ===============================================
               MY PROFILE
           =============================================== */}
@@ -364,10 +385,18 @@ function DashboardSummary({ user }) {
           )}
 
           {/* ===============================================
-              APPLICATIONS
+              MY APPLICATIONS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "my-applications"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               📄
             </div>
@@ -385,13 +414,21 @@ function DashboardSummary({ user }) {
             <p>
               Jobs you have applied for.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
-              ACCEPTED
+              ACCEPTED APPLICATIONS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "my-applications"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               ✅
             </div>
@@ -410,13 +447,21 @@ function DashboardSummary({ user }) {
               Applications accepted by
               employers.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
-              PENDING
+              PENDING APPLICATIONS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "my-applications"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               ⏳
             </div>
@@ -435,13 +480,21 @@ function DashboardSummary({ user }) {
               Applications waiting for
               response.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
-              REQUESTS
+              EMPLOYER REQUESTS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "received-requests"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               📩
             </div>
@@ -459,15 +512,24 @@ function DashboardSummary({ user }) {
             <p>
               Businesses that contacted you.
             </p>
-          </div>
+          </button>
         </div>
       ) : (
         <div className="dashboard-stat-grid">
+
           {/* ===============================================
               MY JOBS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "my-jobs"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               💼
             </div>
@@ -485,13 +547,21 @@ function DashboardSummary({ user }) {
             <p>
               Jobs you have posted.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
               OPEN JOBS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "my-jobs"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               🟢
             </div>
@@ -510,13 +580,21 @@ function DashboardSummary({ user }) {
               Jobs currently accepting
               workers.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
               SENT REQUESTS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "sent-requests"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               📤
             </div>
@@ -534,13 +612,21 @@ function DashboardSummary({ user }) {
             <p>
               Workers you have contacted.
             </p>
-          </div>
+          </button>
 
           {/* ===============================================
               ACCEPTED WORKERS
           =============================================== */}
 
-          <div className="dashboard-stat-card">
+          <button
+            type="button"
+            className="dashboard-stat-card dashboard-clickable-card"
+            onClick={() =>
+              scrollToSection(
+                "sent-requests"
+              )
+            }
+          >
             <div className="dashboard-stat-icon">
               🤝
             </div>
@@ -559,7 +645,7 @@ function DashboardSummary({ user }) {
               Workers who accepted your
               request.
             </p>
-          </div>
+          </button>
         </div>
       )}
     </section>

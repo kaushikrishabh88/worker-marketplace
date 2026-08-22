@@ -2,7 +2,12 @@ import "./App.css";
 
 import ToastProvider from "./components/ToastProvider";
 
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
 
 import FindWorker from "./components/FindWorker";
 import WorkerRegistration from "./components/WorkerRegistration";
@@ -24,7 +29,11 @@ import { useLanguage } from "./i18n/useLanguage";
 function HomePage() {
   const navigate = useNavigate();
 
-  const { language, changeLanguage, t } = useLanguage();
+  const {
+    language,
+    changeLanguage,
+    t,
+  } = useLanguage();
 
   /* =========================================================
      LOGGED IN USER
@@ -33,17 +42,28 @@ function HomePage() {
   let user = null;
 
   try {
-    const storedUser = localStorage.getItem("workmateUser");
+    const storedUser =
+      localStorage.getItem(
+        "workmateUser"
+      );
 
     if (storedUser) {
-      user = JSON.parse(storedUser);
+      user =
+        JSON.parse(storedUser);
     }
   } catch (error) {
-    console.error("Failed to read logged-in user:", error);
+    console.error(
+      "Failed to read logged-in user:",
+      error
+    );
 
-    localStorage.removeItem("workmateUser");
+    localStorage.removeItem(
+      "workmateUser"
+    );
 
-    localStorage.removeItem("workmateToken");
+    localStorage.removeItem(
+      "workmateToken"
+    );
   }
 
   /* =========================================================
@@ -55,9 +75,13 @@ function HomePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("workmateToken");
+    localStorage.removeItem(
+      "workmateToken"
+    );
 
-    localStorage.removeItem("workmateUser");
+    localStorage.removeItem(
+      "workmateUser"
+    );
 
     navigate("/");
 
@@ -65,27 +89,102 @@ function HomePage() {
   };
 
   const scrollToWorkers = () => {
-    document.getElementById("find-workers")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+      .getElementById(
+        "find-workers"
+      )
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
 
   const scrollToJobs = () => {
-    const targetId = user?.role === "employer" ? "post-job" : "find-jobs";
+    const targetId =
+      user?.role === "employer"
+        ? "post-job"
+        : "find-jobs";
 
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+      .getElementById(
+        targetId
+      )
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
 
-  const scrollToReceivedRequests = () => {
-    document.getElementById("received-requests")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+  const scrollToReceivedRequests =
+    () => {
+      document
+        .getElementById(
+          "received-requests"
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    };
+
+  /* =========================================================
+     POPULAR SKILL NAVIGATION
+  ========================================================= */
+
+  const openWorkersBySkill = (
+    skill
+  ) => {
+    /*
+      Worker account par FindWorker component
+      render nahi hota. Isliye worker ko
+      misleading click action nahi denge.
+    */
+
+    if (
+      user?.role === "worker"
+    ) {
+      return;
+    }
+
+    /*
+      FindWorker ko selected skill bhejo.
+    */
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "workmate:filter-workers",
+        {
+          detail: {
+            skill,
+          },
+        }
+      )
+    );
+
+    /*
+      Filter update hone ke baad Find Workers
+      section par smooth scroll.
+    */
+
+    window.setTimeout(
+      () => {
+        document
+          .getElementById(
+            "find-workers"
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+            block: "start",
+          });
+      },
+      50
+    );
   };
+
+  /* =========================================================
+     PAGE
+  ========================================================= */
 
   return (
     <div className="app">
@@ -96,7 +195,9 @@ function HomePage() {
       <nav className="navbar">
         <div
           className="logo"
-          onClick={() => navigate("/")}
+          onClick={() =>
+            navigate("/")
+          }
           style={{
             cursor: "pointer",
           }}
@@ -110,57 +211,97 @@ function HomePage() {
 
           {!user && (
             <>
-              <a href="#find-workers">{t("findWorkers")}</a>
+              <a href="#find-workers">
+                {t(
+                  "findWorkers"
+                )}
+              </a>
 
-              <a href="#find-jobs">{t("findJobs")}</a>
+              <a href="#find-jobs">
+                {t("findJobs")}
+              </a>
             </>
           )}
 
           {/* Employer */}
 
-          {user?.role === "employer" && (
+          {user?.role ===
+            "employer" && (
             <>
-              <a href="#find-workers">{t("findWorkers")}</a>
+              <a href="#find-workers">
+                {t(
+                  "findWorkers"
+                )}
+              </a>
 
               <a href="#sent-requests">
-                {t("myRequests")}
+                {t(
+                  "myRequests"
+                )}
 
-                <NavBadges user={user} type="requests" />
+                <NavBadges
+                  user={user}
+                  type="requests"
+                />
               </a>
 
               <a href="#my-jobs">
                 {t("myJobs")}
 
-                <NavBadges user={user} type="jobs" />
+                <NavBadges
+                  user={user}
+                  type="jobs"
+                />
               </a>
 
-              <a href="#employer-profile">{t("myProfile")}</a>
+              <a href="#employer-profile">
+                {t(
+                  "myProfile"
+                )}
+              </a>
 
-              <a href="#post-job">{t("postJob")}</a>
+              <a href="#post-job">
+                {t("postJob")}
+              </a>
             </>
           )}
 
           {/* Worker */}
 
-          {user?.role === "worker" && (
+          {user?.role ===
+            "worker" && (
             <>
-              <a href="#find-jobs">{t("findJobs")}</a>
+              <a href="#find-jobs">
+                {t("findJobs")}
+              </a>
 
               <a href="#my-applications">
-                {t("myApplications")}
+                {t(
+                  "myApplications"
+                )}
 
-                <NavBadges user={user} type="applications" />
+                <NavBadges
+                  user={user}
+                  type="applications"
+                />
               </a>
 
               <a href="#received-requests">
-                {t("myRequests")}
+                {t(
+                  "myRequests"
+                )}
 
-                <NavBadges user={user} type="requests" />
+                <NavBadges
+                  user={user}
+                  type="requests"
+                />
               </a>
             </>
           )}
 
-          <a href="#how">{t("howItWorks")}</a>
+          <a href="#how">
+            {t("howItWorks")}
+          </a>
         </div>
 
         <div className="nav-actions">
@@ -172,9 +313,15 @@ function HomePage() {
             <button
               type="button"
               className={
-                language === "en" ? "language-btn active" : "language-btn"
+                language === "en"
+                  ? "language-btn active"
+                  : "language-btn"
               }
-              onClick={() => changeLanguage("en")}
+              onClick={() =>
+                changeLanguage(
+                  "en"
+                )
+              }
             >
               English
             </button>
@@ -182,9 +329,15 @@ function HomePage() {
             <button
               type="button"
               className={
-                language === "hi" ? "language-btn active" : "language-btn"
+                language === "hi"
+                  ? "language-btn active"
+                  : "language-btn"
               }
-              onClick={() => changeLanguage("hi")}
+              onClick={() =>
+                changeLanguage(
+                  "hi"
+                )
+              }
             >
               हिंदी
             </button>
@@ -195,16 +348,30 @@ function HomePage() {
               <div className="logged-user">
                 <ProfileAvatar
                   person={user}
-                  fallback={user.role === "worker" ? "👨‍🍳" : "💼"}
+                  fallback={
+                    user.role ===
+                    "worker"
+                      ? "👨‍🍳"
+                      : "💼"
+                  }
                   className="logged-user-icon"
                   alt={user.name}
                 />
 
                 <div className="logged-user-info">
-                  <strong>{user.name}</strong>
+                  <strong>
+                    {user.name}
+                  </strong>
 
                   <small>
-                    {user.role === "worker" ? t("worker") : t("employer")}
+                    {user.role ===
+                    "worker"
+                      ? t(
+                          "worker"
+                        )
+                      : t(
+                          "employer"
+                        )}
                   </small>
                 </div>
               </div>
@@ -212,19 +379,35 @@ function HomePage() {
               <button
                 className="login-btn"
                 type="button"
-                onClick={handleLogout}
+                onClick={
+                  handleLogout
+                }
               >
                 {t("logout")}
               </button>
             </>
           ) : (
             <>
-              <button className="login-btn" type="button" onClick={goToAuth}>
+              <button
+                className="login-btn"
+                type="button"
+                onClick={
+                  goToAuth
+                }
+              >
                 {t("login")}
               </button>
 
-              <button className="signup-btn" type="button" onClick={goToAuth}>
-                {t("getStarted")}
+              <button
+                className="signup-btn"
+                type="button"
+                onClick={
+                  goToAuth
+                }
+              >
+                {t(
+                  "getStarted"
+                )}
               </button>
             </>
           )}
@@ -238,35 +421,63 @@ function HomePage() {
 
         <section className="hero">
           <div className="hero-glow glow-one"></div>
+
           <div className="hero-glow glow-two"></div>
 
           <div className="hero-content">
             <div className="badge">
               <span className="pulse-dot"></span>
 
-              {t("heroBadge")}
+              {t(
+                "heroBadge"
+              )}
             </div>
 
             <h1>
-              {t("heroTitleStart")}
-              <span> {t("heroTitleHighlight")}</span>
+              {t(
+                "heroTitleStart"
+              )}
+
+              <span>
+                {" "}
+                {t(
+                  "heroTitleHighlight"
+                )}
+              </span>
 
               <br />
 
-              {t("heroTitleEnd")}
+              {t(
+                "heroTitleEnd"
+              )}
             </h1>
 
-            <p>{t("heroDescription")}</p>
+            <p>
+              {t(
+                "heroDescription"
+              )}
+            </p>
 
             <div className="hero-buttons">
               <button
                 className="primary-btn"
                 type="button"
                 onClick={
-                  user?.role === "worker" ? scrollToJobs : scrollToWorkers
+                  user?.role ===
+                  "worker"
+                    ? scrollToJobs
+                    : scrollToWorkers
                 }
               >
-                {user?.role === "worker" ? t("findAJob") : t("findAWorker")}{" "}
+                {user?.role ===
+                "worker"
+                  ? t(
+                      "findAJob"
+                    )
+                  : t(
+                      "findAWorker"
+                    )}{" "}
+
                 <span>→</span>
               </button>
 
@@ -274,16 +485,26 @@ function HomePage() {
                 className="secondary-btn"
                 type="button"
                 onClick={
-                  user?.role === "worker"
+                  user?.role ===
+                  "worker"
                     ? scrollToReceivedRequests
                     : scrollToJobs
                 }
               >
-                {user?.role === "worker"
-                  ? t("myRequests")
-                  : user?.role === "employer"
-                    ? t("postJob")
-                    : t("findAJob")}{" "}
+                {user?.role ===
+                "worker"
+                  ? t(
+                      "myRequests"
+                    )
+                  : user?.role ===
+                      "employer"
+                    ? t(
+                        "postJob"
+                      )
+                    : t(
+                        "findAJob"
+                      )}{" "}
+
                 <span>→</span>
               </button>
             </div>
@@ -297,129 +518,315 @@ function HomePage() {
               </div>
 
               <div>
-                <strong>{t("skilledPeople")}</strong>
+                <strong>
+                  {t(
+                    "skilledPeople"
+                  )}
+                </strong>
 
-                <small>{t("builtForLocal")}</small>
+                <small>
+                  {t(
+                    "builtForLocal"
+                  )}
+                </small>
               </div>
             </div>
           </div>
 
           <div className="hero-visual">
             <div className="floating-card card-one">
-              <div className="mini-icon">🍰</div>
-
-              <div>
-                <strong>{t("expertBaker")}</strong>
-
-                <small>{t("threeYearsExperience")}</small>
+              <div className="mini-icon">
+                🍰
               </div>
 
-              <span className="verified">✓</span>
+              <div>
+                <strong>
+                  {t(
+                    "expertBaker"
+                  )}
+                </strong>
+
+                <small>
+                  {t(
+                    "threeYearsExperience"
+                  )}
+                </small>
+              </div>
+
+              <span className="verified">
+                ✓
+              </span>
             </div>
 
             <div className="worker-card">
-              <div className="worker-image">👨‍🍳</div>
+              <div className="worker-image">
+                👨‍🍳
+              </div>
 
               <div className="worker-info">
                 <div className="worker-top">
                   <div>
-                    <h3>{t("skilledWorker")}</h3>
+                    <h3>
+                      {t(
+                        "skilledWorker"
+                      )}
+                    </h3>
 
-                    <p>{t("bakeryFastFood")}</p>
+                    <p>
+                      {t(
+                        "bakeryFastFood"
+                      )}
+                    </p>
                   </div>
 
                   <span className="online-dot"></span>
                 </div>
 
                 <div className="skills">
-                  <span>🍕 {t("pizza")}</span>
+                  <span>
+                    🍕{" "}
+                    {t(
+                      "pizza"
+                    )}
+                  </span>
 
-                  <span>🍔 {t("burger")}</span>
+                  <span>
+                    🍔{" "}
+                    {t(
+                      "burger"
+                    )}
+                  </span>
 
-                  <span>🍰 {t("bakery")}</span>
+                  <span>
+                    🍰{" "}
+                    {t(
+                      "bakery"
+                    )}
+                  </span>
                 </div>
 
                 <div className="worker-details">
-                  <span>📍 {t("nearby")}</span>
+                  <span>
+                    📍{" "}
+                    {t(
+                      "nearby"
+                    )}
+                  </span>
 
-                  <span>⭐ {t("verified")}</span>
+                  <span>
+                    ⭐{" "}
+                    {t(
+                      "verified"
+                    )}
+                  </span>
 
-                  <span>✓ {t("available")}</span>
+                  <span>
+                    ✓{" "}
+                    {t(
+                      "available"
+                    )}
+                  </span>
                 </div>
 
                 <button
                   className="profile-btn"
                   type="button"
                   onClick={
-                    user?.role === "worker" ? scrollToJobs : scrollToWorkers
+                    user?.role ===
+                    "worker"
+                      ? scrollToJobs
+                      : scrollToWorkers
                   }
                 >
-                  {user?.role === "worker" ? t("viewJobs") : t("viewWorkers")} →
+                  {user?.role ===
+                  "worker"
+                    ? t(
+                        "viewJobs"
+                      )
+                    : t(
+                        "viewWorkers"
+                      )}{" "}
+                  →
                 </button>
               </div>
             </div>
 
             <div className="floating-card card-two">
-              <span className="match-icon">⚡</span>
+              <span className="match-icon">
+                ⚡
+              </span>
 
               <div>
-                <strong>{t("smartMatch")}</strong>
+                <strong>
+                  {t(
+                    "smartMatch"
+                  )}
+                </strong>
 
-                <small>{t("findRightSkills")}</small>
+                <small>
+                  {t(
+                    "findRightSkills"
+                  )}
+                </small>
               </div>
             </div>
           </div>
         </section>
+
         {/* =====================================================
             POPULAR SKILLS
         ===================================================== */}
 
-        <section className="categories" id="how">
+        <section
+          className="categories"
+          id="how"
+        >
           <div className="section-heading">
-            <span>{t("popularSkills")}</span>
+            <span>
+              {t(
+                "popularSkills"
+              )}
+            </span>
 
-            <h2>{t("skillsHeading")}</h2>
+            <h2>
+              {t(
+                "skillsHeading"
+              )}
+            </h2>
           </div>
 
           <div className="category-grid">
-            <div className="category-card">
-              <div>👨‍🍳</div>
+            <button
+              type="button"
+              className="category-card category-card-button"
+              onClick={() =>
+                openWorkersBySkill(
+                  "chef"
+                )
+              }
+              disabled={
+                user?.role ===
+                "worker"
+              }
+            >
+              <div>
+                👨‍🍳
+              </div>
 
-              <h3>{t("chefCook")}</h3>
+              <h3>
+                {t(
+                  "chefCook"
+                )}
+              </h3>
 
-              <p>{t("chefCookDescription")}</p>
-            </div>
+              <p>
+                {t(
+                  "chefCookDescription"
+                )}
+              </p>
+            </button>
 
-            <div className="category-card">
-              <div>🍰</div>
+            <button
+              type="button"
+              className="category-card category-card-button"
+              onClick={() =>
+                openWorkersBySkill(
+                  "baker"
+                )
+              }
+              disabled={
+                user?.role ===
+                "worker"
+              }
+            >
+              <div>
+                🍰
+              </div>
 
-              <h3>{t("baker")}</h3>
+              <h3>
+                {t(
+                  "baker"
+                )}
+              </h3>
 
-              <p>{t("bakerDescription")}</p>
-            </div>
+              <p>
+                {t(
+                  "bakerDescription"
+                )}
+              </p>
+            </button>
 
-            <div className="category-card">
-              <div>🍕</div>
+            <button
+              type="button"
+              className="category-card category-card-button"
+              onClick={() =>
+                openWorkersBySkill(
+                  "fast-food"
+                )
+              }
+              disabled={
+                user?.role ===
+                "worker"
+              }
+            >
+              <div>
+                🍕
+              </div>
 
-              <h3>{t("fastFood")}</h3>
+              <h3>
+                {t(
+                  "fastFood"
+                )}
+              </h3>
 
-              <p>{t("fastFoodDescription")}</p>
-            </div>
+              <p>
+                {t(
+                  "fastFoodDescription"
+                )}
+              </p>
+            </button>
 
-            <div className="category-card">
-              <div>🍬</div>
+            <button
+              type="button"
+              className="category-card category-card-button"
+              onClick={() =>
+                openWorkersBySkill(
+                  "halwai"
+                )
+              }
+              disabled={
+                user?.role ===
+                "worker"
+              }
+            >
+              <div>
+                🍬
+              </div>
 
-              <h3>{t("halwai")}</h3>
+              <h3>
+                {t(
+                  "halwai"
+                )}
+              </h3>
 
-              <p>{t("halwaiDescription")}</p>
-            </div>
+              <p>
+                {t(
+                  "halwaiDescription"
+                )}
+              </p>
+            </button>
           </div>
         </section>
+
         {/* =====================================================
             DASHBOARD
         ===================================================== */}
 
-        {user && <DashboardSummary user={user} />}
+        {user && (
+          <DashboardSummary
+            user={user}
+          />
+        )}
 
         {/* =====================================================
             GUEST
@@ -437,7 +844,8 @@ function HomePage() {
             EMPLOYER
         ===================================================== */}
 
-        {user?.role === "employer" && (
+        {user?.role ===
+          "employer" && (
           <>
             <FindWorker />
 
@@ -453,7 +861,8 @@ function HomePage() {
             WORKER
         ===================================================== */}
 
-        {user?.role === "worker" && (
+        {user?.role ===
+          "worker" && (
           <>
             <FindJobs />
 
@@ -469,11 +878,22 @@ function HomePage() {
             BOTTOM CTA
         ===================================================== */}
 
-        <section className="cta-section" id="jobs">
+        <section
+          className="cta-section"
+          id="jobs"
+        >
           <div>
-            <span>{t("readyToGetStarted")}</span>
+            <span>
+              {t(
+                "readyToGetStarted"
+              )}
+            </span>
 
-            <h2>{t("nextOpportunity")}</h2>
+            <h2>
+              {t(
+                "nextOpportunity"
+              )}
+            </h2>
           </div>
 
           {user ? (
@@ -481,17 +901,36 @@ function HomePage() {
               className="primary-btn"
               type="button"
               onClick={
-                user.role === "employer" ? scrollToWorkers : scrollToJobs
+                user.role ===
+                "employer"
+                  ? scrollToWorkers
+                  : scrollToJobs
               }
             >
-              {user.role === "employer"
-                ? t("exploreWorkers")
-                : t("exploreJobs")}{" "}
+              {user.role ===
+              "employer"
+                ? t(
+                    "exploreWorkers"
+                  )
+                : t(
+                    "exploreJobs"
+                  )}{" "}
+
               <span>→</span>
             </button>
           ) : (
-            <button className="primary-btn" type="button" onClick={goToAuth}>
-              {t("getStarted")} <span>→</span>
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={
+                goToAuth
+              }
+            >
+              {t(
+                "getStarted"
+              )}{" "}
+
+              <span>→</span>
             </button>
           )}
         </section>
@@ -500,7 +939,12 @@ function HomePage() {
             EMPLOYER PROFILE
         ===================================================== */}
 
-        {user?.role === "employer" && <EmployerProfile user={user} />}
+        {user?.role ===
+          "employer" && (
+          <EmployerProfile
+            user={user}
+          />
+        )}
       </main>
     </div>
   );
@@ -515,11 +959,24 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/auth"
+            element={<Auth />}
+          />
 
-          <Route path="/workers/:id" element={<WorkerProfile />} />
+          <Route
+            path="/workers/:id"
+            element={
+              <WorkerProfile />
+            }
+          />
 
-          <Route path="*" element={<HomePage />} />
+          <Route
+            path="*"
+            element={
+              <HomePage />
+            }
+          />
         </Routes>
       </BrowserRouter>
     </ToastProvider>

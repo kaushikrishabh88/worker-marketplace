@@ -8,7 +8,8 @@ import WorkerCard from "./WorkerCard";
 import { useToast } from "./useToast";
 
 function FindWorker() {
-  const { error: showError } = useToast();
+  const { error: showError } =
+    useToast();
 
   const [workers, setWorkers] =
     useState([]);
@@ -16,11 +17,15 @@ function FindWorker() {
   const [loading, setLoading] =
     useState(true);
 
-  const [fetchError, setFetchError] =
-    useState("");
+  const [
+    fetchError,
+    setFetchError,
+  ] = useState("");
 
-  const [searchTerm, setSearchTerm] =
-    useState("");
+  const [
+    searchTerm,
+    setSearchTerm,
+  ] = useState("");
 
   const [
     selectedSkill,
@@ -40,48 +45,104 @@ function FindWorker() {
   ========================================================= */
 
   useEffect(() => {
-    const fetchWorkers = async () => {
-      try {
-        setLoading(true);
-        setFetchError("");
+    const fetchWorkers =
+      async () => {
+        try {
+          setLoading(true);
 
-        const response = await fetch(
-          "http://localhost:5000/api/workers"
-        );
+          setFetchError("");
 
-        const data =
-          await response.json();
+          const response =
+            await fetch(
+              "http://localhost:5000/api/workers"
+            );
 
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Failed to fetch workers."
+          const data =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              data.message ||
+                "Failed to fetch workers."
+            );
+          }
+
+          setWorkers(
+            data.workers || []
+          );
+        } catch (error) {
+          console.error(
+            "Fetch workers error:",
+            error
+          );
+
+          const message =
+            error.message ||
+            "Failed to fetch workers.";
+
+          setFetchError(
+            message
+          );
+
+          showError(
+            message
+          );
+        } finally {
+          setLoading(
+            false
           );
         }
-
-        setWorkers(
-          data.workers || []
-        );
-      } catch (error) {
-        console.error(
-          "Fetch workers error:",
-          error
-        );
-
-        const message =
-          error.message ||
-          "Failed to fetch workers.";
-
-        setFetchError(message);
-
-        showError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
     fetchWorkers();
   }, [showError]);
+
+  /* =========================================================
+     POPULAR SKILL EVENT
+     Receives selected skill from App.jsx
+  ========================================================= */
+
+  useEffect(() => {
+    const handlePopularSkill =
+      (event) => {
+        const skill =
+          event.detail?.skill;
+
+        if (!skill) {
+          return;
+        }
+
+        /*
+          Reset other filters so clicking a
+          Popular Skill always gives useful
+          results for that skill.
+        */
+
+        setSearchTerm("");
+
+        setSelectedLocation("");
+
+        setSortBy(
+          "relevant"
+        );
+
+        setSelectedSkill(
+          skill
+        );
+      };
+
+    window.addEventListener(
+      "workmate:filter-workers",
+      handlePopularSkill
+    );
+
+    return () => {
+      window.removeEventListener(
+        "workmate:filter-workers",
+        handlePopularSkill
+      );
+    };
+  }, []);
 
   /* =========================================================
      FILTER + SORT WORKERS
@@ -95,76 +156,106 @@ function FindWorker() {
           .toLowerCase();
 
       const result =
-        workers.filter((worker) => {
-          const name =
-            worker.name
-              ?.toLowerCase() || "";
+        workers.filter(
+          (worker) => {
+            const name =
+              worker.name
+                ?.toLowerCase() ||
+              "";
 
-          const role =
-            worker.role
-              ?.toLowerCase() || "";
+            const role =
+              worker.role
+                ?.toLowerCase() ||
+              "";
 
-          const location =
-            worker.location
-              ?.toLowerCase() || "";
+            const location =
+              worker.location
+                ?.toLowerCase() ||
+              "";
 
-          const skills =
-            Array.isArray(
-              worker.skills
-            )
-              ? worker.skills
-              : [];
+            const skills =
+              Array.isArray(
+                worker.skills
+              )
+                ? worker.skills
+                : [];
 
-          const matchesSearch =
-            !search ||
-            name.includes(search) ||
-            role.includes(search) ||
-            location.includes(search) ||
-            skills.some((skill) =>
-              skill
-                .toLowerCase()
-                .includes(search)
+            const matchesSearch =
+              !search ||
+              name.includes(
+                search
+              ) ||
+              role.includes(
+                search
+              ) ||
+              location.includes(
+                search
+              ) ||
+              skills.some(
+                (skill) =>
+                  skill
+                    .toLowerCase()
+                    .includes(
+                      search
+                    )
+              );
+
+            const matchesSkill =
+              !selectedSkill ||
+              skills.some(
+                (skill) =>
+                  skill.toLowerCase() ===
+                  selectedSkill.toLowerCase()
+              );
+
+            const matchesLocation =
+              !selectedLocation ||
+              location ===
+                selectedLocation.toLowerCase();
+
+            return (
+              matchesSearch &&
+              matchesSkill &&
+              matchesLocation
             );
+          }
+        );
 
-          const matchesSkill =
-            !selectedSkill ||
-            skills.some(
-              (skill) =>
-                skill.toLowerCase() ===
-                selectedSkill.toLowerCase()
-            );
-
-          const matchesLocation =
-            !selectedLocation ||
-            location ===
-              selectedLocation.toLowerCase();
-
-          return (
-            matchesSearch &&
-            matchesSkill &&
-            matchesLocation
-          );
-        });
-
-      if (sortBy === "rating") {
-        return [...result].sort(
+      if (
+        sortBy ===
+        "rating"
+      ) {
+        return [
+          ...result,
+        ].sort(
           (a, b) =>
-            Number(b.rating || 0) -
-            Number(a.rating || 0)
+            Number(
+              b.rating ||
+                0
+            ) -
+            Number(
+              a.rating ||
+                0
+            )
         );
       }
 
       if (
-        sortBy === "experience"
+        sortBy ===
+        "experience"
       ) {
-        return [...result].sort(
+        return [
+          ...result,
+        ].sort(
           (a, b) =>
             parseInt(
-              b.experience || "0",
+              b.experience ||
+                "0",
               10
             ) -
             parseInt(
-              a.experience || "0",
+              a.experience ||
+                "0",
               10
             )
         );
@@ -183,27 +274,42 @@ function FindWorker() {
      CLEAR FILTERS
   ========================================================= */
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setSelectedSkill("");
-    setSelectedLocation("");
-    setSortBy("relevant");
-  };
+  const clearFilters =
+    () => {
+      setSearchTerm("");
+
+      setSelectedSkill(
+        ""
+      );
+
+      setSelectedLocation(
+        ""
+      );
+
+      setSortBy(
+        "relevant"
+      );
+    };
 
   /* =========================================================
      SCROLL TO RESULTS
   ========================================================= */
 
-  const scrollToResults = () => {
-    document
-      .querySelector(
-        ".worker-list"
-      )
-      ?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-  };
+  const scrollToResults =
+    () => {
+      document
+        .querySelector(
+          ".worker-list"
+        )
+        ?.scrollIntoView(
+          {
+            behavior:
+              "smooth",
+            block:
+              "start",
+          }
+        );
+    };
 
   /* =========================================================
      PAGE
@@ -220,12 +326,15 @@ function FindWorker() {
         </span>
 
         <h1>
-          Find the right person for your business.
+          Find the right person
+          for your business.
         </h1>
 
         <p>
-          Search skilled workers by skill,
-          location, experience, and availability.
+          Search skilled workers
+          by skill, location,
+          experience, and
+          availability.
         </p>
       </div>
 
@@ -241,10 +350,15 @@ function FindWorker() {
 
           <input
             type="text"
-            value={searchTerm}
-            onChange={(event) =>
+            value={
+              searchTerm
+            }
+            onChange={(
+              event
+            ) =>
               setSearchTerm(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="Skill, role or worker name..."
@@ -257,10 +371,15 @@ function FindWorker() {
           </label>
 
           <select
-            value={selectedSkill}
-            onChange={(event) =>
+            value={
+              selectedSkill
+            }
+            onChange={(
+              event
+            ) =>
               setSelectedSkill(
-                event.target.value
+                event.target
+                  .value
               )
             }
           >
@@ -296,10 +415,15 @@ function FindWorker() {
           </label>
 
           <select
-            value={selectedLocation}
-            onChange={(event) =>
+            value={
+              selectedLocation
+            }
+            onChange={(
+              event
+            ) =>
               setSelectedLocation(
-                event.target.value
+                event.target
+                  .value
               )
             }
           >
@@ -324,9 +448,12 @@ function FindWorker() {
         <button
           className="worker-search-btn"
           type="button"
-          onClick={scrollToResults}
+          onClick={
+            scrollToResults
+          }
         >
           Search Workers
+
           <span>→</span>
         </button>
       </div>
@@ -350,7 +477,8 @@ function FindWorker() {
           </h2>
 
           <p>
-            Browse workers matching your
+            Browse workers
+            matching your
             requirements.
           </p>
         </div>
@@ -358,9 +486,12 @@ function FindWorker() {
         <select
           className="worker-sort"
           value={sortBy}
-          onChange={(event) =>
+          onChange={(
+            event
+          ) =>
             setSortBy(
-              event.target.value
+              event.target
+                .value
             )
           }
         >
@@ -386,11 +517,13 @@ function FindWorker() {
         {loading ? (
           <div className="empty-workers">
             <h3>
-              Loading workers...
+              Loading
+              workers...
             </h3>
 
             <p>
-              Please wait while we load available
+              Please wait while
+              we load available
               workers.
             </p>
           </div>
@@ -405,20 +538,25 @@ function FindWorker() {
             </span>
 
             <h3>
-              Unable to load workers
+              Unable to load
+              workers
             </h3>
 
             <p>
               {fetchError}
             </p>
           </div>
-        ) : filteredWorkers.length >
-          0 ? (
+        ) : filteredWorkers
+            .length > 0 ? (
           filteredWorkers.map(
             (worker) => (
               <WorkerCard
-                key={worker._id}
-                worker={worker}
+                key={
+                  worker._id
+                }
+                worker={
+                  worker
+                }
               />
             )
           )
@@ -437,16 +575,20 @@ function FindWorker() {
             </h3>
 
             <p>
-              Try changing your search, skill, or
+              Try changing your
+              search, skill, or
               location filters.
             </p>
 
             <button
               className="list-worker-btn"
               type="button"
-              onClick={clearFilters}
+              onClick={
+                clearFilters
+              }
             >
               Clear Filters
+
               <span>↻</span>
             </button>
           </div>
