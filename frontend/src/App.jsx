@@ -23,7 +23,7 @@ import DashboardSummary from "./components/DashboardSummary";
 import NavBadges from "./components/NavBadges";
 import ProfileAvatar from "./components/ProfileAvatar";
 import EmployerProfile from "./components/EmployerProfile";
-
+import ContactUs from "./components/ContactUs";
 import { useLanguage } from "./i18n/useLanguage";
 
 function HomePage() {
@@ -302,6 +302,9 @@ function HomePage() {
           <a href="#how">
             {t("howItWorks")}
           </a>
+          <a href="#contact-us">
+  Contact Us
+</a>
         </div>
 
         <div className="nav-actions">
@@ -945,6 +948,11 @@ function HomePage() {
             user={user}
           />
         )}
+        {/* =====================================================
+    CONTACT US
+===================================================== */}
+
+<ContactUs />
       </main>
     </div>
   );

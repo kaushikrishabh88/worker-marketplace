@@ -6,13 +6,26 @@ const Worker = require("./models/Worker");
 const User = require("./models/User");
 const Job = require("./models/Job");
 const Application = require("./models/Application");
+const ContactMessage = require("./models/ContactMessage");
+const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const { registerAvatarRoutes, publicUser } = require("./avatarRoutes");
 
 require("dotenv").config();
+/* =========================================================
+   CONTACT EMAIL TRANSPORTER
+========================================================= */
 
+const contactMailTransporter = nodemailer.createTransport({
+  service: "gmail",
+
+  auth: {
+    user: process.env.CONTACT_EMAIL_USER,
+    pass: process.env.CONTACT_EMAIL_APP_PASSWORD,
+  },
+});
 const app = express();
 
 /* =========================================================
@@ -97,6 +110,142 @@ app.get("/", (req, res) => {
     success: true,
     message: "Worker Marketplace Backend is running!",
   });
+});
+
+/* =========================================================
+   CONTACT US
+   Public
+========================================================= */
+
+app.post("/api/contact", async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      userType,
+      subject,
+      message,
+    } = req.body;
+
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !userType ||
+      !subject ||
+      !message
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All contact fields are required.",
+      });
+    }
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+    const cleanSubject = subject.trim();
+    const cleanMessage = message.trim();
+
+    if (
+      !["employer", "worker", "other"].includes(userType)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid user type.",
+      });
+    }
+
+    if (
+      !cleanName ||
+      !cleanEmail ||
+      !cleanPhone ||
+      !cleanSubject ||
+      !cleanMessage
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All contact fields are required.",
+      });
+    }
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    if (cleanMessage.length > 1500) {
+      return res.status(400).json({
+        success: false,
+        message: "Message must be 1500 characters or fewer.",
+      });
+    }
+
+    const contactMessage =
+      await ContactMessage.create({
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        userType,
+        subject: cleanSubject,
+        message: cleanMessage,
+      });
+      try {
+  await contactMailTransporter.sendMail({
+    from: `"WorkMate Contact" <${process.env.CONTACT_EMAIL_USER}>`,
+
+    to: process.env.CONTACT_EMAIL_TO,
+
+    replyTo: cleanEmail,
+
+    subject: `WorkMate Contact: ${cleanSubject}`,
+
+    text: `
+New WorkMate contact message
+
+Name: ${cleanName}
+Email: ${cleanEmail}
+Phone: ${cleanPhone}
+User Type: ${userType}
+Subject: ${cleanSubject}
+
+Message:
+${cleanMessage}
+
+Message ID: ${contactMessage._id}
+    `.trim(),
+  });
+} catch (mailError) {
+  console.error(
+    "Contact email notification failed:",
+    mailError,
+  );
+}
+    return res.status(201).json({
+      success: true,
+      message:
+        "Thanks for contacting WorkMate. We will get back to you soon.",
+      contactMessage: {
+        id: contactMessage._id,
+        status: contactMessage.status,
+        createdAt: contactMessage.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Contact form error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to send your message right now. Please try again.",
+    });
+  }
 });
 
 /* =========================================================
