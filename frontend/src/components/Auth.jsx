@@ -6,7 +6,7 @@ function Auth() {
 
   const [mode, setMode] =
     useState("login");
-
+ const [loginRole, setLoginRole] = useState("employer");
   const [formData, setFormData] =
     useState({
       name: "",
@@ -299,6 +299,20 @@ function Auth() {
       let finalUser =
         data.user;
 
+      if (
+  mode === "login" &&
+  data.user?.role !== loginRole
+) {
+  const selectedRole =
+    loginRole === "employer"
+      ? "Employer"
+      : "Worker";
+
+  throw new Error(
+    `This account is not registered as an ${selectedRole}. Please select the correct login type.`,
+  );
+}
+
       /* =====================================================
          REGISTER AVATAR
       ===================================================== */
@@ -500,16 +514,59 @@ function Auth() {
           </button>
         </div>
 
+
+            {mode === "login" && (
+  <div
+    className="auth-login-role-tabs"
+    role="group"
+    aria-label="Choose login type"
+  >
+    <button
+      type="button"
+      className={
+        loginRole === "employer"
+          ? "active"
+          : ""
+      }
+      onClick={() => {
+        setLoginRole("employer");
+        setError("");
+      }}
+    >
+      Employer Login
+    </button>
+
+    <button
+      type="button"
+      className={
+        loginRole === "worker"
+          ? "active"
+          : ""
+      }
+      onClick={() => {
+        setLoginRole("worker");
+        setError("");
+      }}
+    >
+      Worker Login
+    </button>
+  </div>
+)}
+
         <div className="auth-heading">
           <h1>
             {mode === "login"
-              ? "Welcome back 👋"
-              : "Create your account"}
+  ? loginRole === "employer"
+    ? "Employer Login 💼"
+    : "Worker Login 👨‍🍳"
+  : "Create your account"}
           </h1>
 
           <p>
             {mode === "login"
-              ? "Login to continue to WorkMate."
+              ? loginRole === "employer"
+  ? "Login to hire and manage workers on WorkMate."
+  : "Login to find jobs and manage your work on WorkMate."
               : "Join WorkMate and connect with local opportunities."}
           </p>
         </div>
