@@ -11875,3 +11875,745 @@ main,
     font-size: 0.9rem;
   }
 }
+
+/* =========================================================
+   WORKMATE AUTH EXPERIENCE - FINAL REDESIGN
+========================================================= */
+
+.auth-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 8% 12%,
+      rgba(251, 146, 60, 0.15),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 92% 12%,
+      rgba(34, 197, 94, 0.14),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 85% 86%,
+      rgba(14, 165, 233, 0.12),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      #fffdf8 0%,
+      #f3fbf6 44%,
+      #edf9f7 100%
+    );
+}
+
+.auth-page::before {
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  top: -220px;
+  right: -100px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.08);
+  pointer-events: none;
+}
+
+.auth-page::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  left: -140px;
+  bottom: -150px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.08);
+  pointer-events: none;
+}
+
+/* =========================================================
+   MAIN SHELL
+========================================================= */
+
+.auth-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1380px, 100%);
+  min-height: 760px;
+  display: grid;
+  grid-template-columns: minmax(380px, 0.92fr) minmax(500px, 1.08fr);
+  gap: 36px;
+  align-items: stretch;
+}
+
+/* =========================================================
+   LEFT SHOWCASE
+========================================================= */
+
+.auth-showcase {
+  position: relative;
+  min-height: 760px;
+  overflow: hidden;
+  padding: 52px 52px 260px;
+  border: 1px solid rgba(5, 150, 105, 0.1);
+  border-radius: 32px;
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(251, 191, 36, 0.16),
+      transparent 25%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.97),
+      rgba(236, 253, 245, 0.95)
+    );
+  box-shadow:
+    0 30px 70px rgba(15, 118, 110, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.auth-showcase-brand {
+  position: relative;
+  z-index: 3;
+}
+
+.auth-showcase-logo {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 60px;
+}
+
+.auth-showcase-logo-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #059669, #16a34a);
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(5, 150, 105, 0.24);
+}
+
+.auth-showcase-logo strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.auth-showcase-logo strong span {
+  color: #059669;
+}
+
+.auth-showcase-logo small {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.auth-showcase-kicker {
+  display: inline-flex;
+  margin-bottom: 17px;
+  padding: 8px 13px;
+  border: 1px solid rgba(5, 150, 105, 0.15);
+  border-radius: 999px;
+  background: rgba(236, 253, 245, 0.9);
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.auth-showcase-copy h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(3rem, 5vw, 4.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.065em;
+}
+
+.auth-showcase-copy h1 em {
+  color: #059669;
+  font-style: normal;
+}
+
+.auth-showcase-copy > p {
+  max-width: 490px;
+  margin: 24px 0 34px;
+  color: #475569;
+  font-size: 1.06rem;
+  line-height: 1.75;
+}
+
+.auth-showcase-benefits {
+  display: grid;
+  gap: 13px;
+}
+
+.auth-benefit-card {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(12px);
+}
+
+.auth-benefit-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  font-size: 1.35rem;
+}
+
+.auth-benefit-icon-employer {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.auth-benefit-icon-worker {
+  background: rgba(249, 115, 22, 0.13);
+}
+
+.auth-benefit-icon-trust {
+  background: rgba(37, 99, 235, 0.11);
+}
+
+.auth-benefit-card strong {
+  color: #0f172a;
+  font-size: 0.94rem;
+}
+
+.auth-benefit-card p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* =========================================================
+   WORKER SCENE
+========================================================= */
+
+.auth-worker-scene {
+  position: absolute;
+  inset: auto 0 0;
+  height: 245px;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      transparent,
+      rgba(167, 243, 208, 0.26) 40%,
+      rgba(5, 150, 105, 0.16)
+    );
+}
+
+.auth-worker-scene::before,
+.auth-worker-scene::after {
+  content: "";
+  position: absolute;
+  left: -8%;
+  width: 116%;
+  height: 150px;
+  border-radius: 50% 50% 0 0;
+}
+
+.auth-worker-scene::before {
+  bottom: -80px;
+  background: rgba(52, 211, 153, 0.24);
+  transform: rotate(-3deg);
+}
+
+.auth-worker-scene::after {
+  bottom: -115px;
+  background: rgba(5, 150, 105, 0.2);
+  transform: rotate(4deg);
+}
+
+.auth-scene-sun {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  left: 65px;
+  bottom: 85px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.28);
+  box-shadow: 0 0 50px rgba(251, 191, 36, 0.18);
+}
+
+.auth-scene-city {
+  position: absolute;
+  right: 30px;
+  bottom: 49px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  opacity: 0.18;
+}
+
+.auth-scene-city span {
+  display: block;
+  width: 30px;
+  border-radius: 5px 5px 0 0;
+  background: #047857;
+}
+
+.auth-scene-city span:nth-child(1) {
+  height: 65px;
+}
+
+.auth-scene-city span:nth-child(2) {
+  height: 105px;
+}
+
+.auth-scene-city span:nth-child(3) {
+  height: 78px;
+}
+
+.auth-scene-city span:nth-child(4) {
+  height: 125px;
+}
+
+.auth-scene-city span:nth-child(5) {
+  height: 88px;
+}
+
+.auth-scene-workers {
+  position: absolute;
+  z-index: 4;
+  left: 40px;
+  right: 40px;
+  bottom: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 22px;
+}
+
+.auth-scene-workers > div {
+  min-width: 95px;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: center;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 15px 30px rgba(15, 118, 110, 0.12);
+}
+
+.auth-scene-workers span {
+  display: block;
+  font-size: 2.2rem;
+}
+
+.auth-scene-workers small {
+  display: block;
+  margin-top: 4px;
+  color: #334155;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+/* =========================================================
+   RIGHT AUTH CARD OVERRIDES
+========================================================= */
+
+.auth-page .auth-card {
+  width: 100%;
+  max-width: none;
+  min-height: 760px;
+  padding: 46px 54px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 32px 80px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 #ffffff;
+}
+
+.auth-page .auth-back {
+  color: #047857;
+  font-weight: 800;
+}
+
+.auth-page .auth-logo {
+  margin: 20px 0 28px;
+  font-size: 2rem;
+}
+
+.auth-page .auth-logo span {
+  color: #059669;
+}
+
+/* LOGIN / SIGNUP */
+
+.auth-page .auth-tabs {
+  padding: 5px;
+  border: 1px solid rgba(5, 150, 105, 0.1);
+  border-radius: 15px;
+  background: #f8fafc;
+}
+
+.auth-page .auth-tabs button.active {
+  background: linear-gradient(135deg, #059669, #16a34a);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.18);
+}
+
+/* EMPLOYER / WORKER */
+
+.auth-page .auth-login-role-tabs {
+  margin: 18px 0 30px;
+  padding: 5px;
+  border: 1px solid rgba(5, 150, 105, 0.16);
+  border-radius: 15px;
+  background: #f0fdf4;
+}
+
+.auth-page .auth-login-role-tabs button {
+  color: #047857;
+}
+
+.auth-page .auth-login-role-tabs button.active {
+  background: linear-gradient(135deg, #047857, #059669);
+  color: #ffffff;
+  box-shadow: 0 9px 22px rgba(5, 150, 105, 0.22);
+}
+
+.auth-page .auth-heading h1 {
+  color: #0f172a;
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  letter-spacing: -0.045em;
+}
+
+.auth-page .auth-heading p {
+  color: #64748b;
+}
+
+/* INPUTS */
+
+.auth-page .auth-field label {
+  color: #1e293b;
+  font-weight: 800;
+}
+
+.auth-page .auth-field input,
+.auth-page .auth-field select,
+.auth-page .auth-field textarea {
+  border: 1px solid #dbe4e8;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: none;
+}
+
+.auth-page .auth-field input:focus,
+.auth-page .auth-field select:focus,
+.auth-page .auth-field textarea:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.auth-page .auth-submit {
+  min-height: 58px;
+  border: 0;
+  border-radius: 15px;
+  background:
+    linear-gradient(
+      110deg,
+      #059669 0%,
+      #16a34a 55%,
+      #65a30d 100%
+    );
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(5, 150, 105, 0.24);
+}
+
+.auth-page .auth-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(5, 150, 105, 0.3);
+}
+
+.auth-page .auth-switch button {
+  color: #047857;
+  font-weight: 900;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1050px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+    max-width: 720px;
+  }
+
+  .auth-showcase {
+    min-height: auto;
+    padding-bottom: 280px;
+  }
+
+  .auth-page .auth-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .auth-page {
+    padding: 16px;
+  }
+
+  .auth-shell {
+    gap: 18px;
+  }
+
+  .auth-showcase {
+    padding: 30px 24px 245px;
+    border-radius: 24px;
+  }
+
+  .auth-showcase-logo {
+    margin-bottom: 38px;
+  }
+
+  .auth-showcase-copy h1 {
+    font-size: 3.1rem;
+  }
+
+  .auth-benefit-card {
+    grid-template-columns: 44px 1fr;
+    padding: 12px;
+  }
+
+  .auth-benefit-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .auth-scene-workers {
+    left: 15px;
+    right: 15px;
+    gap: 8px;
+  }
+
+  .auth-scene-workers > div {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .auth-scene-workers span {
+    font-size: 1.7rem;
+  }
+
+  .auth-page .auth-card {
+    padding: 28px 20px;
+    border-radius: 24px;
+  }
+
+  .auth-page .auth-login-role-tabs button {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .auth-showcase-copy h1 {
+    font-size: 2.65rem;
+  }
+
+  .auth-showcase-copy > p {
+    font-size: 0.94rem;
+  }
+
+  .auth-scene-workers small {
+    display: none;
+  }
+}
+
+/* =========================================================
+   AUTH SKILL SCENE - 4 WORKMATE CATEGORIES
+========================================================= */
+
+.auth-scene-workers {
+  position: absolute;
+  z-index: 4;
+  left: 22px;
+  right: 22px;
+  bottom: 24px;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.auth-scene-workers > div {
+  min-width: 0;
+
+  padding: 12px 8px 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 17px;
+
+  background: rgba(255, 255, 255, 0.8);
+
+  text-align: center;
+
+  backdrop-filter: blur(12px);
+
+  box-shadow:
+    0 12px 28px rgba(15, 118, 110, 0.12);
+}
+
+.auth-scene-workers span {
+  display: block;
+
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.auth-scene-workers small {
+  display: block;
+
+  margin-top: 6px;
+
+  color: #334155;
+
+  font-size: 0.67rem;
+  font-weight: 800;
+
+  line-height: 1.25;
+}
+
+/* Slight category personality */
+
+.auth-scene-workers > div:nth-child(1) {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(236, 253, 245, 0.9)
+    );
+}
+
+.auth-scene-workers > div:nth-child(2) {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 247, 237, 0.9)
+    );
+}
+
+.auth-scene-workers > div:nth-child(3) {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(254, 242, 242, 0.9)
+    );
+}
+
+.auth-scene-workers > div:nth-child(4) {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(254, 249, 195, 0.9)
+    );
+}
+
+/* =========================================================
+   AUTH LEFT PANEL SPACING FOR 4 SKILLS
+========================================================= */
+
+.auth-worker-scene {
+  height: 260px;
+}
+
+.auth-showcase {
+  padding-bottom: 280px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1050px) {
+  .auth-scene-workers {
+    left: 26px;
+    right: 26px;
+  }
+}
+
+@media (max-width: 680px) {
+  .auth-showcase {
+    padding-bottom: 355px;
+  }
+
+  .auth-worker-scene {
+    height: 330px;
+  }
+
+  .auth-scene-workers {
+    left: 16px;
+    right: 16px;
+    bottom: 22px;
+
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .auth-scene-workers > div {
+    padding: 13px 8px;
+  }
+
+  .auth-scene-workers span {
+    font-size: 1.8rem;
+  }
+
+  .auth-scene-workers small {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .auth-showcase {
+    padding-bottom: 330px;
+  }
+
+  .auth-worker-scene {
+    height: 305px;
+  }
+
+  .auth-scene-workers {
+    left: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+
+  .auth-scene-workers > div {
+    border-radius: 14px;
+  }
+
+  .auth-scene-workers span {
+    font-size: 1.6rem;
+  }
+}
