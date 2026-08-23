@@ -9,38 +9,76 @@ function Auth() {
   ========================================================= */
 
   const [mode, setMode] = useState("login");
-
-  const [loginRole, setLoginRole] = useState("employer");
+  const [loginRole, setLoginRole] =
+    useState("employer");
 
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
+    email:
+      localStorage.getItem(
+        "workmateRememberEmail",
+      ) || "",
     password: "",
     role: "worker",
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
 
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] =
+    useState(
+      Boolean(
+        localStorage.getItem(
+          "workmateRememberEmail",
+        ),
+      ),
+    );
+
+  const [
+    verificationEmail,
+    setVerificationEmail,
+  ] = useState("");
 
   /* =========================================================
-     PROFILE PHOTO
+     FORGOT PASSWORD STATE
   ========================================================= */
 
-  const [avatarFile, setAvatarFile] = useState(null);
+  const [
+    showForgotPassword,
+    setShowForgotPassword,
+  ] = useState(false);
 
-  const [avatarPreview, setAvatarPreview] = useState("");
+  const [forgotEmail, setForgotEmail] =
+    useState("");
+
+  const [
+    forgotLoading,
+    setForgotLoading,
+  ] = useState(false);
+
+  const [
+    forgotError,
+    setForgotError,
+  ] = useState("");
+
+  const [
+    forgotSuccess,
+    setForgotSuccess,
+  ] = useState("");
 
   /* =========================================================
      INPUT CHANGE
   ========================================================= */
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const { name, value } =
+      event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -49,125 +87,24 @@ function Auth() {
   };
 
   /* =========================================================
-     PROFILE PHOTO CHANGE
-  ========================================================= */
-
-  const handleAvatarChange = (event) => {
-    const file = event.target.files?.[0];
-
-    setError("");
-
-    if (!file) {
-      return;
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      setError(
-        "Please choose a JPG, PNG or WebP image.",
-      );
-
-      event.target.value = "";
-
-      return;
-    }
-
-    if (file.size > 1024 * 1024) {
-      setError(
-        "Profile photo must be 1 MB or smaller.",
-      );
-
-      event.target.value = "";
-
-      return;
-    }
-
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-
-    const preview = URL.createObjectURL(file);
-
-    setAvatarFile(file);
-
-    setAvatarPreview(preview);
-  };
-
-  /* =========================================================
-     REMOVE SELECTED PHOTO
-  ========================================================= */
-
-  const removeSelectedAvatar = () => {
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-
-    setAvatarFile(null);
-
-    setAvatarPreview("");
-  };
-
-  /* =========================================================
-     UPLOAD PROFILE PHOTO
-  ========================================================= */
-
-  const uploadAvatar = async (token) => {
-    if (!avatarFile) {
-      return null;
-    }
-
-    const uploadData = new FormData();
-
-    uploadData.append(
-      "avatar",
-      avatarFile,
-    );
-
-    const response = await fetch(
-      "http://localhost:5000/api/profile/avatar",
-      {
-        method: "POST",
-
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-
-        body: uploadData,
-      },
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.message ||
-          "Profile photo could not be saved.",
-      );
-    }
-
-    return data;
-  };
-
-  /* =========================================================
      GET CURRENT USER
   ========================================================= */
 
-  const fetchCurrentUser = async (token) => {
+  const fetchCurrentUser = async (
+    token,
+  ) => {
     const response = await fetch(
       "http://localhost:5000/api/auth/me",
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization:
+            `Bearer ${token}`,
         },
       },
     );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     if (
       response.ok &&
@@ -180,14 +117,86 @@ function Auth() {
   };
 
   /* =========================================================
+     FORGOT PASSWORD
+  ========================================================= */
+
+  const handleForgotPassword =
+    async (event) => {
+      event.preventDefault();
+
+      setForgotError("");
+      setForgotSuccess("");
+
+      const cleanEmail =
+        forgotEmail.trim();
+
+      if (!cleanEmail) {
+        setForgotError(
+          "Please enter your email address.",
+        );
+
+        return;
+      }
+
+      try {
+        setForgotLoading(true);
+
+        const response =
+          await fetch(
+            "http://localhost:5000/api/auth/forgot-password",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                email: cleanEmail,
+              }),
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Unable to send reset link.",
+          );
+        }
+
+        setForgotSuccess(
+          data.message ||
+            "If an account exists for this email, a password reset link has been sent.",
+        );
+      } catch (error) {
+        console.error(
+          "Forgot password error:",
+          error,
+        );
+
+        setForgotError(
+          error.message ||
+            "Unable to send reset link.",
+        );
+      } finally {
+        setForgotLoading(false);
+      }
+    };
+
+  /* =========================================================
      LOGIN / REGISTER
   ========================================================= */
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (
+    event,
+  ) => {
     event.preventDefault();
 
     setLoading(true);
-
     setError("");
 
     try {
@@ -199,35 +208,41 @@ function Auth() {
       const requestBody =
         mode === "login"
           ? {
-              email: formData.email,
+              email:
+                formData.email,
               password:
                 formData.password,
             }
           : {
-              name: formData.name,
-              email: formData.email,
+              name:
+                formData.name,
+              email:
+                formData.email,
               password:
                 formData.password,
-              role: formData.role,
+              role:
+                formData.role,
             };
 
-      const response = await fetch(
-        endpoint,
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          endpoint,
+          {
+            method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify(
+              requestBody,
+            ),
           },
+        );
 
-          body: JSON.stringify(
-            requestBody,
-          ),
-        },
-      );
-
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -238,15 +253,34 @@ function Auth() {
         );
       }
 
-      let finalUser = data.user;
+      /* =====================================================
+         REGISTRATION SUCCESS
+         EMAIL VERIFICATION REQUIRED
+      ===================================================== */
+
+      if (mode === "register") {
+        setVerificationEmail(
+          data.email ||
+            formData.email.trim(),
+        );
+
+        setFormData(
+          (previous) => ({
+            ...previous,
+            password: "",
+          }),
+        );
+
+        return;
+      }
 
       /* =====================================================
-         VERIFY LOGIN ROLE
+         LOGIN ROLE CHECK
       ===================================================== */
 
       if (
-        mode === "login" &&
-        data.user?.role !== loginRole
+        data.user?.role !==
+        loginRole
       ) {
         const selectedRole =
           loginRole === "employer"
@@ -258,47 +292,21 @@ function Auth() {
         );
       }
 
-      /* =====================================================
-         REGISTER AVATAR
-      ===================================================== */
-
-      if (
-        mode === "register" &&
-        avatarFile
-      ) {
-        const avatarData =
-          await uploadAvatar(
-            data.token,
-          );
-
-        if (avatarData?.user) {
-          finalUser =
-            avatarData.user;
-        }
-
-        const freshUser =
-          await fetchCurrentUser(
-            data.token,
-          );
-
-        if (freshUser) {
-          finalUser = freshUser;
-        }
-      }
+      let finalUser =
+        data.user;
 
       /* =====================================================
          LOGIN REFRESH
       ===================================================== */
 
-      if (mode === "login") {
-        const freshUser =
-          await fetchCurrentUser(
-            data.token,
-          );
+      const freshUser =
+        await fetchCurrentUser(
+          data.token,
+        );
 
-        if (freshUser) {
-          finalUser = freshUser;
-        }
+      if (freshUser) {
+        finalUser =
+          freshUser;
       }
 
       /* =====================================================
@@ -312,7 +320,9 @@ function Auth() {
 
       localStorage.setItem(
         "workmateUser",
-        JSON.stringify(finalUser),
+        JSON.stringify(
+          finalUser,
+        ),
       );
 
       /* =====================================================
@@ -322,7 +332,7 @@ function Auth() {
       if (rememberMe) {
         localStorage.setItem(
           "workmateRememberEmail",
-          formData.email,
+          formData.email.trim(),
         );
       } else {
         localStorage.removeItem(
@@ -330,10 +340,7 @@ function Auth() {
         );
       }
 
-      removeSelectedAvatar();
-
       navigate("/");
-
       window.location.reload();
     } catch (error) {
       console.error(
@@ -354,14 +361,19 @@ function Auth() {
      CHANGE LOGIN / SIGNUP MODE
   ========================================================= */
 
-  const changeMode = (newMode) => {
+  const changeMode = (
+    newMode,
+  ) => {
     setMode(newMode);
 
     setError("");
-
+    setVerificationEmail("");
     setShowPassword(false);
 
-    removeSelectedAvatar();
+    setShowForgotPassword(false);
+    setForgotEmail("");
+    setForgotError("");
+    setForgotSuccess("");
 
     setFormData({
       name: "",
@@ -374,19 +386,49 @@ function Auth() {
           : "",
 
       password: "",
-
       role: "worker",
     });
   };
 
   /* =========================================================
-     FALLBACK EMOJI
+     OPEN FORGOT PASSWORD
   ========================================================= */
 
-  const fallbackEmoji =
-    formData.role === "employer"
-      ? "💼"
-      : "👨‍🍳";
+  const openForgotPassword =
+    () => {
+      setForgotEmail(
+        formData.email || "",
+      );
+
+      setForgotError("");
+      setForgotSuccess("");
+
+      setShowForgotPassword(
+        true,
+      );
+    };
+
+  /* =========================================================
+     BACK TO LOGIN
+  ========================================================= */
+
+  const backToLogin = () => {
+    setShowForgotPassword(false);
+    setForgotError("");
+    setForgotSuccess("");
+
+    setMode("login");
+
+    setFormData(
+      (previous) => ({
+        ...previous,
+        email:
+          forgotEmail ||
+          previous.email,
+        password: "",
+      }),
+    );
+  };
 
   /* =========================================================
      PAGE
@@ -409,7 +451,9 @@ function Auth() {
               <div>
                 <strong>
                   Work
-                  <span>Mate</span>
+                  <span>
+                    Mate
+                  </span>
                 </strong>
 
                 <small>
@@ -443,8 +487,6 @@ function Auth() {
             </div>
 
             <div className="auth-showcase-benefits">
-              {/* EMPLOYERS */}
-
               <div className="auth-benefit-card">
                 <div className="auth-benefit-icon auth-benefit-icon-employer">
                   💼
@@ -464,8 +506,6 @@ function Auth() {
                 </div>
               </div>
 
-              {/* WORKERS */}
-
               <div className="auth-benefit-card">
                 <div className="auth-benefit-icon auth-benefit-icon-worker">
                   👨‍🍳
@@ -484,8 +524,6 @@ function Auth() {
                   </p>
                 </div>
               </div>
-
-              {/* TRUST */}
 
               <div className="auth-benefit-card">
                 <div className="auth-benefit-icon auth-benefit-icon-trust">
@@ -586,384 +624,560 @@ function Auth() {
           </button>
 
           <div className="auth-logo">
-            <span>Work</span>
+            <span>
+              Work
+            </span>
             Mate
           </div>
 
           {/* =================================================
-              LOGIN / SIGN UP
+              LOGIN / SIGNUP TABS
           ================================================= */}
 
-          <div className="auth-tabs">
-            <button
-              type="button"
-              className={
-                mode === "login"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                changeMode("login")
-              }
-            >
-              Login
-            </button>
+          {!showForgotPassword &&
+            !verificationEmail && (
+              <div className="auth-tabs">
+                <button
+                  type="button"
+                  className={
+                    mode === "login"
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() =>
+                    changeMode(
+                      "login",
+                    )
+                  }
+                >
+                  Login
+                </button>
 
-            <button
-              type="button"
-              className={
-                mode === "register"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                changeMode("register")
-              }
-            >
-              Sign Up
-            </button>
-          </div>
+                <button
+                  type="button"
+                  className={
+                    mode === "register"
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() =>
+                    changeMode(
+                      "register",
+                    )
+                  }
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
 
           {/* =================================================
               EMPLOYER / WORKER LOGIN SELECTOR
           ================================================= */}
 
-          {mode === "login" && (
-            <div
-              className="auth-login-role-tabs"
-              role="group"
-              aria-label="Choose login type"
-            >
-              <button
-                type="button"
-                className={
-                  loginRole ===
-                  "employer"
-                    ? "active"
-                    : ""
-                }
-                onClick={() => {
-                  setLoginRole(
-                    "employer",
-                  );
-
-                  setError("");
-                }}
+          {mode === "login" &&
+            !showForgotPassword &&
+            !verificationEmail && (
+              <div
+                className="auth-login-role-tabs"
+                role="group"
+                aria-label="Choose login type"
               >
-                💼 Employer Login
-              </button>
+                <button
+                  type="button"
+                  className={
+                    loginRole ===
+                    "employer"
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() => {
+                    setLoginRole(
+                      "employer",
+                    );
 
-              <button
-                type="button"
-                className={
-                  loginRole ===
-                  "worker"
-                    ? "active"
-                    : ""
-                }
-                onClick={() => {
-                  setLoginRole(
-                    "worker",
-                  );
+                    setError("");
+                  }}
+                >
+                  💼 Employer Login
+                </button>
 
-                  setError("");
-                }}
-              >
-                👨‍🍳 Worker Login
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  className={
+                    loginRole ===
+                    "worker"
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() => {
+                    setLoginRole(
+                      "worker",
+                    );
+
+                    setError("");
+                  }}
+                >
+                  👨‍🍳 Worker Login
+                </button>
+              </div>
+            )}
 
           {/* =================================================
               HEADING
           ================================================= */}
 
-          <div className="auth-heading">
-            <h1>
-              {mode === "login"
-                ? loginRole ===
-                  "employer"
-                  ? "Employer Login 💼"
-                  : "Worker Login 👨‍🍳"
-                : "Create your account"}
-            </h1>
+          {!verificationEmail && (
+            <div className="auth-heading">
+              <h1>
+                {showForgotPassword
+                  ? "Reset your password"
+                  : mode === "login"
+                    ? loginRole ===
+                      "employer"
+                      ? "Employer Login 💼"
+                      : "Worker Login 👨‍🍳"
+                    : "Create your account"}
+              </h1>
 
-            <p>
-              {mode === "login"
-                ? loginRole ===
-                  "employer"
-                  ? "Login to hire and manage skilled workers on WorkMate."
-                  : "Login to find food-service jobs and manage your work on WorkMate."
-                : "Join WorkMate and connect with local opportunities."}
-            </p>
-          </div>
+              <p>
+                {showForgotPassword
+                  ? "Enter the email linked to your WorkMate account and we'll send you a secure reset link."
+                  : mode === "login"
+                    ? loginRole ===
+                      "employer"
+                      ? "Login to hire and manage skilled workers on WorkMate."
+                      : "Login to find food-service jobs and manage your work on WorkMate."
+                    : "Join WorkMate and connect with local opportunities."}
+              </p>
+            </div>
+          )}
 
           {/* =================================================
-              FORM
+              FORGOT / VERIFICATION / NORMAL FORM
           ================================================= */}
 
-          <form
-            className="auth-form"
-            onSubmit={handleSubmit}
-          >
-            {/* NAME */}
-
-            {mode ===
-              "register" && (
-              <div className="auth-field">
-                <label htmlFor="auth-name">
-                  Full Name
-                </label>
-
-                <input
-                  id="auth-name"
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  autoComplete="name"
-                  required
-                />
+          {showForgotPassword ? (
+            <div className="forgot-password-panel">
+              <div className="forgot-password-icon">
+                🔐
               </div>
-            )}
 
-            {/* PROFILE PHOTO */}
+              <span className="forgot-password-kicker">
+                ACCOUNT RECOVERY
+              </span>
 
-            {mode ===
-              "register" && (
-              <div className="auth-avatar-section">
-                <label className="auth-avatar-label">
-                  Profile Photo
+              {!forgotSuccess ? (
+                <form
+                  className="auth-form forgot-password-form"
+                  onSubmit={
+                    handleForgotPassword
+                  }
+                >
+                  <div className="auth-field">
+                    <label htmlFor="forgot-email">
+                      Email Address
+                    </label>
 
-                  <span>
-                    Optional
-                  </span>
-                </label>
-
-                <div className="auth-avatar-preview">
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="Profile preview"
+                    <input
+                      id="forgot-email"
+                      type="email"
+                      value={
+                        forgotEmail
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setForgotEmail(
+                          event.target
+                            .value,
+                        )
+                      }
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      autoFocus
+                      required
                     />
-                  ) : (
-                    <span>
-                      {fallbackEmoji}
-                    </span>
-                  )}
-                </div>
+                  </div>
 
-                <div className="auth-avatar-actions">
-                  <label
-                    className="auth-avatar-upload"
-                    htmlFor="auth-avatar"
+                  {forgotError && (
+                    <p className="auth-error">
+                      ⚠️{" "}
+                      {forgotError}
+                    </p>
+                  )}
+
+                  <button
+                    className="auth-submit"
+                    type="submit"
+                    disabled={
+                      forgotLoading
+                    }
                   >
-                    📷 Choose Photo
+                    {forgotLoading
+                      ? "Sending reset link..."
+                      : "Send Reset Link →"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="forgot-password-back"
+                    onClick={
+                      backToLogin
+                    }
+                    disabled={
+                      forgotLoading
+                    }
+                  >
+                    ← Back to Login
+                  </button>
+                </form>
+              ) : (
+                <div className="forgot-password-success">
+                  <div className="forgot-password-success-icon">
+                    ✉️
+                  </div>
+
+                  <h2>
+                    Check your inbox
+                  </h2>
+
+                  <p>
+                    {forgotSuccess}
+                  </p>
+
+                  <strong>
+                    {forgotEmail}
+                  </strong>
+
+                  <div className="forgot-password-note">
+                    The reset link
+                    expires in 30
+                    minutes and can
+                    only be used once.
+                  </div>
+
+                  <button
+                    type="button"
+                    className="auth-submit"
+                    onClick={
+                      backToLogin
+                    }
+                  >
+                    Back to Login →
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : verificationEmail ? (
+            <div className="auth-verification-success">
+              <div className="auth-verification-success-icon">
+                ✉️
+              </div>
+
+              <span className="auth-verification-kicker">
+                EMAIL SENT
+              </span>
+
+              <h2>
+                Check your inbox
+              </h2>
+
+              <p>
+                We sent a
+                verification link to
+              </p>
+
+              <strong className="auth-verification-email">
+                {verificationEmail}
+              </strong>
+
+              <p>
+                Open the email and
+                click
+                <strong>
+                  {" "}
+                  Verify Email
+                </strong>
+                . After verification,
+                come back here and
+                login to WorkMate.
+              </p>
+
+              <div className="auth-verification-note">
+                🔒 Your account
+                cannot be used until
+                the email address has
+                been verified.
+              </div>
+
+              <button
+                type="button"
+                className="auth-submit"
+                onClick={() => {
+                  const email =
+                    verificationEmail;
+
+                  setVerificationEmail(
+                    "",
+                  );
+
+                  setMode("login");
+
+                  setFormData({
+                    name: "",
+                    email,
+                    password: "",
+                    role: "worker",
+                  });
+
+                  setError("");
+                  setShowPassword(
+                    false,
+                  );
+                }}
+              >
+                Go to Login →
+              </button>
+            </div>
+          ) : (
+            <form
+              className="auth-form"
+              onSubmit={
+                handleSubmit
+              }
+            >
+              {/* NAME */}
+
+              {mode ===
+                "register" && (
+                <div className="auth-field">
+                  <label htmlFor="auth-name">
+                    Full Name
                   </label>
 
                   <input
-                    id="auth-avatar"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={
-                      handleAvatarChange
+                    id="auth-name"
+                    type="text"
+                    name="name"
+                    value={
+                      formData.name
                     }
-                    hidden
+                    onChange={
+                      handleChange
+                    }
+                    placeholder="Enter your full name"
+                    autoComplete="name"
+                    required
                   />
-
-                  {avatarFile && (
-                    <button
-                      type="button"
-                      className="auth-avatar-remove"
-                      onClick={
-                        removeSelectedAvatar
-                      }
-                    >
-                      Remove
-                    </button>
-                  )}
                 </div>
+              )}
 
-                <small className="auth-avatar-help">
-                  JPG, PNG or WebP.
-                  Maximum 1 MB. If no
-                  photo is selected,
-                  an emoji will be
-                  used.
-                </small>
-              </div>
-            )}
+              {/* EMAIL */}
 
-            {/* EMAIL */}
+              <div className="auth-field">
+                <label htmlFor="auth-email">
+                  Email Address
+                </label>
 
-            <div className="auth-field">
-              <label htmlFor="auth-email">
-                Email Address
-              </label>
-
-              <input
-                id="auth-email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            {/* PASSWORD */}
-
-            <div className="auth-field">
-              <label htmlFor="auth-password">
-                Password
-              </label>
-
-              <div className="auth-password-wrap">
                 <input
-                  id="auth-password"
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  name="password"
+                  id="auth-email"
+                  type="email"
+                  name="email"
                   value={
-                    formData.password
+                    formData.email
                   }
-                  onChange={handleChange}
-                  placeholder="Minimum 6 characters"
-                  minLength="6"
-                  autoComplete={
-                    mode === "login"
-                      ? "current-password"
-                      : "new-password"
+                  onChange={
+                    handleChange
                   }
+                  placeholder="you@example.com"
+                  autoComplete="email"
                   required
                 />
-
-                <button
-                  className="auth-password-toggle"
-                  type="button"
-                  onClick={() =>
-                    setShowPassword(
-                      (previous) =>
-                        !previous,
-                    )
-                  }
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
-                >
-                  {showPassword
-                    ? "🙈"
-                    : "👁️"}
-                </button>
               </div>
-            </div>
 
-            {/* REMEMBER EMAIL */}
+              {/* PASSWORD */}
 
-            {mode === "login" && (
-              <div className="auth-options">
-                <label className="auth-remember">
+              <div className="auth-field">
+                <label htmlFor="auth-password">
+                  Password
+                </label>
+
+                <div className="auth-password-wrap">
                   <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(event) =>
-                      setRememberMe(
-                        event.target
-                          .checked,
-                      )
+                    id="auth-password"
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
                     }
+                    name="password"
+                    value={
+                      formData.password
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    placeholder="Minimum 6 characters"
+                    minLength="6"
+                    autoComplete={
+                      mode ===
+                      "login"
+                        ? "current-password"
+                        : "new-password"
+                    }
+                    required
                   />
 
-                  <span>
-                    Remember my email
-                  </span>
-                </label>
+                  <button
+                    className="auth-password-toggle"
+                    type="button"
+                    onClick={() =>
+                      setShowPassword(
+                        (
+                          previous,
+                        ) =>
+                          !previous,
+                      )
+                    }
+                    aria-label={
+                      showPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                  >
+                    {showPassword
+                      ? "🙈"
+                      : "👁️"}
+                  </button>
+                </div>
               </div>
-            )}
 
-            {/* REGISTER ROLE */}
+              {/* LOGIN OPTIONS */}
 
-            {mode ===
-              "register" && (
-              <div className="auth-field">
-                <label htmlFor="auth-role">
-                  I want to join as
-                </label>
+              {mode === "login" && (
+                <div className="auth-options">
+                  <label className="auth-remember">
+                    <input
+                      type="checkbox"
+                      checked={
+                        rememberMe
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setRememberMe(
+                          event.target
+                            .checked,
+                        )
+                      }
+                    />
 
-                <select
-                  id="auth-role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                >
-                  <option value="worker">
-                    👨‍🍳 Worker
-                  </option>
+                    <span>
+                      Remember my email
+                    </span>
+                  </label>
 
-                  <option value="employer">
-                    💼 Employer
-                  </option>
-                </select>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    className="auth-forgot-link"
+                    onClick={
+                      openForgotPassword
+                    }
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
 
-            {/* ERROR */}
+              {/* REGISTER ROLE */}
 
-            {error && (
-              <p className="auth-error">
-                ⚠️ {error}
-              </p>
-            )}
+              {mode ===
+                "register" && (
+                <div className="auth-field">
+                  <label htmlFor="auth-role">
+                    I want to join as
+                  </label>
 
-            {/* SUBMIT */}
+                  <select
+                    id="auth-role"
+                    name="role"
+                    value={
+                      formData.role
+                    }
+                    onChange={
+                      handleChange
+                    }
+                  >
+                    <option value="worker">
+                      👨‍🍳 Worker
+                    </option>
 
-            <button
-              className="auth-submit"
-              type="submit"
-              disabled={loading}
-            >
-              {loading
-                ? mode === "login"
-                  ? "Logging in..."
-                  : "Creating account..."
-                : mode === "login"
-                  ? "Login →"
-                  : "Create Account →"}
-            </button>
-          </form>
+                    <option value="employer">
+                      💼 Employer
+                    </option>
+                  </select>
+                </div>
+              )}
+
+              {/* ERROR */}
+
+              {error && (
+                <p className="auth-error">
+                  ⚠️ {error}
+                </p>
+              )}
+
+              {/* SUBMIT */}
+
+              <button
+                className="auth-submit"
+                type="submit"
+                disabled={
+                  loading
+                }
+              >
+                {loading
+                  ? mode ===
+                    "login"
+                    ? "Logging in..."
+                    : "Creating account..."
+                  : mode ===
+                    "login"
+                    ? "Login →"
+                    : "Create Account →"}
+              </button>
+            </form>
+          )}
 
           {/* =================================================
               MODE SWITCH
           ================================================= */}
 
-          <p className="auth-switch">
-            {mode === "login"
-              ? "Don't have an account?"
-              : "Already have an account?"}
+          {!verificationEmail &&
+            !showForgotPassword && (
+              <p className="auth-switch">
+                {mode === "login"
+                  ? "Don't have an account?"
+                  : "Already have an account?"}
 
-            <button
-              type="button"
-              onClick={() =>
-                changeMode(
-                  mode === "login"
-                    ? "register"
-                    : "login",
-                )
-              }
-            >
-              {mode === "login"
-                ? "Sign Up"
-                : "Login"}
-            </button>
-          </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    changeMode(
+                      mode ===
+                        "login"
+                        ? "register"
+                        : "login",
+                    )
+                  }
+                >
+                  {mode === "login"
+                    ? "Sign Up"
+                    : "Login"}
+                </button>
+              </p>
+            )}
 
           <div className="auth-footer">
             🔒 Your account

@@ -130,8 +130,8 @@ function WorkerProfile() {
 
   useEffect(() => {
     if (!token || !id || loggedInUser?.role !== "employer") {
-  return;
-}
+      return;
+    }
 
     const fetchContactStatus = async () => {
       try {

@@ -10,6 +10,8 @@ const ContactMessage = require("./models/ContactMessage");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const PasswordResetToken = require("./models/PasswordResetToken");
 
 const { registerAvatarRoutes, publicUser } = require("./avatarRoutes");
 
@@ -78,6 +80,21 @@ function authenticateUser(req, res, next) {
 }
 
 /* =========================================================
+   ADMIN ONLY MIDDLEWARE
+========================================================= */
+
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required.",
+    });
+  }
+
+  next();
+}
+
+/* =========================================================
    PROFILE AVATAR ROUTES
 ========================================================= */
 
@@ -119,23 +136,9 @@ app.get("/", (req, res) => {
 
 app.post("/api/contact", async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      userType,
-      subject,
-      message,
-    } = req.body;
+    const { name, email, phone, userType, subject, message } = req.body;
 
-    if (
-      !name ||
-      !email ||
-      !phone ||
-      !userType ||
-      !subject ||
-      !message
-    ) {
+    if (!name || !email || !phone || !userType || !subject || !message) {
       return res.status(400).json({
         success: false,
         message: "All contact fields are required.",
@@ -148,9 +151,7 @@ app.post("/api/contact", async (req, res) => {
     const cleanSubject = subject.trim();
     const cleanMessage = message.trim();
 
-    if (
-      !["employer", "worker", "other"].includes(userType)
-    ) {
+    if (!["employer", "worker", "other"].includes(userType)) {
       return res.status(400).json({
         success: false,
         message: "Please select a valid user type.",
@@ -170,8 +171,7 @@ app.post("/api/contact", async (req, res) => {
       });
     }
 
-    const emailPattern =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(cleanEmail)) {
       return res.status(400).json({
@@ -187,26 +187,25 @@ app.post("/api/contact", async (req, res) => {
       });
     }
 
-    const contactMessage =
-      await ContactMessage.create({
-        name: cleanName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        userType,
-        subject: cleanSubject,
-        message: cleanMessage,
-      });
-      try {
-  await contactMailTransporter.sendMail({
-    from: `"WorkMate Contact" <${process.env.CONTACT_EMAIL_USER}>`,
+    const contactMessage = await ContactMessage.create({
+      name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      userType,
+      subject: cleanSubject,
+      message: cleanMessage,
+    });
+    try {
+      await contactMailTransporter.sendMail({
+        from: `"WorkMate Contact" <${process.env.CONTACT_EMAIL_USER}>`,
 
-    to: process.env.CONTACT_EMAIL_TO,
+        to: process.env.CONTACT_EMAIL_TO,
 
-    replyTo: cleanEmail,
+        replyTo: cleanEmail,
 
-    subject: `WorkMate Contact: ${cleanSubject}`,
+        subject: `WorkMate Contact: ${cleanSubject}`,
 
-    text: `
+        text: `
 New WorkMate contact message
 
 Name: ${cleanName}
@@ -220,17 +219,13 @@ ${cleanMessage}
 
 Message ID: ${contactMessage._id}
     `.trim(),
-  });
-} catch (mailError) {
-  console.error(
-    "Contact email notification failed:",
-    mailError,
-  );
-}
+      });
+    } catch (mailError) {
+      console.error("Contact email notification failed:", mailError);
+    }
     return res.status(201).json({
       success: true,
-      message:
-        "Thanks for contacting WorkMate. We will get back to you soon.",
+      message: "Thanks for contacting WorkMate. We will get back to you soon.",
       contactMessage: {
         id: contactMessage._id,
         status: contactMessage.status,
@@ -242,11 +237,165 @@ Message ID: ${contactMessage._id}
 
     return res.status(500).json({
       success: false,
-      message:
-        "Unable to send your message right now. Please try again.",
+      message: "Unable to send your message right now. Please try again.",
     });
   }
 });
+
+/* =========================================================
+   ADMIN - GET CONTACT MESSAGES
+========================================================= */
+
+app.get(
+  "/api/admin/contact-messages",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const messages = await ContactMessage.find().sort({
+        createdAt: -1,
+      });
+
+      const counts = {
+        total: messages.length,
+        new: 0,
+        read: 0,
+        resolved: 0,
+      };
+
+      messages.forEach((message) => {
+        if (message.status === "new") {
+          counts.new += 1;
+        }
+
+        if (message.status === "read") {
+          counts.read += 1;
+        }
+
+        if (message.status === "resolved") {
+          counts.resolved += 1;
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        count: messages.length,
+        counts,
+        messages,
+      });
+    } catch (error) {
+      console.error("Fetch admin contact messages error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to load contact messages.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   ADMIN - UPDATE CONTACT MESSAGE STATUS
+========================================================= */
+
+app.patch(
+  "/api/admin/contact-messages/:id/status",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid contact message ID.",
+        });
+      }
+
+      const allowedStatuses = ["new", "read", "resolved"];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Status must be new, read or resolved.",
+        });
+      }
+
+      const message = await ContactMessage.findById(id);
+
+      if (!message) {
+        return res.status(404).json({
+          success: false,
+          message: "Contact message not found.",
+        });
+      }
+
+      message.status = status;
+
+      await message.save();
+
+      return res.status(200).json({
+        success: true,
+        message: `Message marked as ${status}.`,
+        contactMessage: message,
+      });
+    } catch (error) {
+      console.error("Update contact message status error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to update contact message.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   ADMIN - DELETE CONTACT MESSAGE
+========================================================= */
+
+app.delete(
+  "/api/admin/contact-messages/:id",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid contact message ID.",
+        });
+      }
+
+      const message = await ContactMessage.findById(id);
+
+      if (!message) {
+        return res.status(404).json({
+          success: false,
+          message: "Contact message not found.",
+        });
+      }
+
+      await message.deleteOne();
+
+      return res.status(200).json({
+        success: true,
+        message: "Contact message deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Delete contact message error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to delete contact message.",
+      });
+    }
+  },
+);
 
 /* =========================================================
    REGISTER USER
@@ -272,6 +421,15 @@ app.post("/api/auth/register", async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
@@ -289,36 +447,255 @@ app.post("/api/auth/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    /*
+     * Generate a random verification token.
+     *
+     * The raw token goes only in the email.
+     * MongoDB stores its SHA-256 hash.
+     */
+    const rawVerificationToken = crypto.randomBytes(32).toString("hex");
+
+    const emailVerificationToken = crypto
+      .createHash("sha256")
+      .update(rawVerificationToken)
+      .digest("hex");
+
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
       password: hashedPassword,
       role: userRole,
+
+      emailVerified: false,
+
+      emailVerificationToken,
+
+      emailVerificationExpires,
     });
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      },
-    );
+    /*
+     * During local development the frontend runs
+     * on localhost:5173.
+     *
+     * Later, when WorkMate is deployed, we can put
+     * the frontend URL in .env.
+     */
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
-    res.status(201).json({
+    const verificationUrl = `${frontendUrl}/verify-email?token=${rawVerificationToken}`;
+
+    /*
+     * Send verification email.
+     *
+     * If sending fails, delete the newly created
+     * account so the same email can try signup again.
+     */
+    try {
+      await contactMailTransporter.sendMail({
+        from: `"WorkMate" <${process.env.CONTACT_EMAIL_USER}>`,
+
+        to: user.email,
+
+        subject: "Verify your WorkMate email",
+
+        text: `
+Welcome to WorkMate!
+
+Hi ${user.name},
+
+Thanks for creating your WorkMate account.
+
+Please verify your email address by opening the link below:
+
+${verificationUrl}
+
+This verification link will expire in 24 hours.
+
+If you did not create this WorkMate account, you can ignore this email.
+
+WorkMate
+        `.trim(),
+
+        html: `
+          <div
+            style="
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 32px;
+              font-family: Arial, sans-serif;
+              color: #1f2937;
+            "
+          >
+            <h1
+              style="
+                margin-bottom: 8px;
+                color: #0f766e;
+              "
+            >
+              WorkMate
+            </h1>
+
+            <h2>
+              Verify your email
+            </h2>
+
+            <p>
+              Hi ${user.name},
+            </p>
+
+            <p>
+              Thanks for creating your
+              WorkMate account.
+            </p>
+
+            <p>
+              Please verify your email
+              address before logging in.
+            </p>
+
+            <p style="margin: 30px 0;">
+              <a
+                href="${verificationUrl}"
+                style="
+                  display: inline-block;
+                  padding: 14px 24px;
+                  border-radius: 8px;
+                  background: #0f766e;
+                  color: #ffffff;
+                  text-decoration: none;
+                  font-weight: 700;
+                "
+              >
+                Verify Email
+              </a>
+            </p>
+
+            <p>
+              This verification link expires
+              in 24 hours.
+            </p>
+
+            <p
+              style="
+                margin-top: 28px;
+                font-size: 13px;
+                color: #6b7280;
+              "
+            >
+              If you did not create this
+              WorkMate account, you can
+              ignore this email.
+            </p>
+          </div>
+        `,
+      });
+    } catch (mailError) {
+      console.error("Verification email failed:", mailError);
+
+      await User.deleteOne({
+        _id: user._id,
+      });
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Account could not be created because the verification email could not be sent. Please try again.",
+      });
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * We do NOT return a JWT here.
+     * The user must verify the email first.
+     */
+    return res.status(201).json({
       success: true,
-      message: "Account created successfully!",
-      token,
-      user: publicUser(user),
+
+      message:
+        "Account created successfully. Please check your email and verify your account before logging in.",
+
+      verificationRequired: true,
+
+      email: user.email,
+
+      role: user.role,
     });
   } catch (error) {
     console.error("Register user error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to create account.",
+    });
+  }
+});
+
+/* =========================================================
+   VERIFY EMAIL
+========================================================= */
+
+app.get("/api/auth/verify-email", async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required.",
+      });
+    }
+
+    /*
+     * Hash the token received from the URL.
+     *
+     * MongoDB contains only the hash,
+     * not the raw token.
+     */
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      emailVerificationToken: hashedToken,
+
+      emailVerificationExpires: {
+        $gt: new Date(),
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+
+        message: "Verification link is invalid or has expired.",
+      });
+    }
+
+    user.emailVerified = true;
+
+    user.emailVerificationToken = null;
+
+    user.emailVerificationExpires = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+
+      message: "Email verified successfully. You can now login to WorkMate.",
+
+      email: user.email,
+
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Verify email error:", error);
+
+    return res.status(500).json({
+      success: false,
+
+      message: "Unable to verify email right now. Please try again.",
     });
   }
 });
@@ -360,6 +737,25 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
+    /*
+     * New accounts cannot login until
+     * their email has been verified.
+     *
+     * Existing accounts were already
+     * migrated to emailVerified=true.
+     */
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+
+        message: "Please verify your email before logging in.",
+
+        verificationRequired: true,
+
+        email: user.email,
+      });
+    }
+
     const token = jwt.sign(
       {
         userId: user._id,
@@ -371,7 +767,7 @@ app.post("/api/auth/login", async (req, res) => {
       },
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Login successful!",
       token,
@@ -380,9 +776,420 @@ app.post("/api/auth/login", async (req, res) => {
   } catch (error) {
     console.error("Login user error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to login.",
+    });
+  }
+});
+
+/* =========================================================
+   CHANGE PASSWORD
+   Logged-in User
+========================================================= */
+
+app.put("/api/auth/change-password", authenticateUser, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Current password, new password and confirm password are required.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match.",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from your current password.",
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User account not found.",
+      });
+    }
+
+    const currentPasswordMatch = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!currentPasswordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedNewPassword;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to change password right now. Please try again.",
+    });
+  }
+});
+
+/* =========================================================
+   FORGOT PASSWORD
+   Public
+========================================================= */
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const genericMessage =
+    "If an account exists for this email, a password reset link has been sent.";
+
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    /*
+     * Security:
+     * Do not reveal whether this email
+     * belongs to a WorkMate account.
+     */
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: genericMessage,
+      });
+    }
+
+    /*
+     * Remove previous reset tokens.
+     * Only newest reset email should work.
+     */
+    await PasswordResetToken.deleteMany({
+      user: user._id,
+    });
+
+    /*
+     * Raw token goes only to the user's email.
+     * MongoDB stores only SHA-256 hash.
+     */
+    const rawResetToken = crypto.randomBytes(32).toString("hex");
+
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawResetToken)
+      .digest("hex");
+
+    /*
+     * Reset link expires after 30 minutes.
+     */
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await PasswordResetToken.create({
+      user: user._id,
+      tokenHash,
+      expiresAt,
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawResetToken}`;
+
+    try {
+      await contactMailTransporter.sendMail({
+        from: `"WorkMate" <${process.env.CONTACT_EMAIL_USER}>`,
+
+        to: user.email,
+
+        subject: "Reset your WorkMate password",
+
+        text: `
+Hi ${user.name},
+
+We received a request to reset your WorkMate password.
+
+Open the link below to choose a new password:
+
+${resetUrl}
+
+This password reset link will expire in 30 minutes.
+
+If you did not request a password reset, you can ignore this email.
+
+WorkMate
+          `.trim(),
+
+        html: `
+            <div
+              style="
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 32px;
+                font-family: Arial, sans-serif;
+                color: #2d211b;
+              "
+            >
+              <h1
+                style="
+                  margin-bottom: 8px;
+                  color: #f47a20;
+                "
+              >
+                WorkMate
+              </h1>
+
+              <h2>
+                Reset your password
+              </h2>
+
+              <p>
+                Hi ${user.name},
+              </p>
+
+              <p>
+                We received a request to reset
+                your WorkMate password.
+              </p>
+
+              <p style="margin: 30px 0;">
+                <a
+                  href="${resetUrl}"
+                  style="
+                    display: inline-block;
+                    padding: 14px 24px;
+                    border-radius: 10px;
+                    background: #f47a20;
+                    color: #ffffff;
+                    text-decoration: none;
+                    font-weight: 700;
+                  "
+                >
+                  Reset Password
+                </a>
+              </p>
+
+              <p>
+                This password reset link expires
+                in <strong>30 minutes</strong>.
+              </p>
+
+              <p
+                style="
+                  margin-top: 28px;
+                  font-size: 13px;
+                  color: #7c6a60;
+                "
+              >
+                If you did not request this,
+                you can safely ignore this email.
+              </p>
+
+              <p
+                style="
+                  margin-top: 24px;
+                  font-size: 12px;
+                  color: #9a8a80;
+                "
+              >
+                For your security, never share
+                this password reset link with anyone.
+              </p>
+            </div>
+          `,
+      });
+    } catch (mailError) {
+      console.error("Password reset email error:", mailError);
+
+      /*
+       * Email wasn't delivered, so remove
+       * the unusable reset token.
+       */
+      await PasswordResetToken.deleteMany({
+        user: user._id,
+      });
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to send the password reset email right now. Please try again.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: genericMessage,
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to process your password reset request right now.",
+    });
+  }
+});
+
+/* =========================================================
+   RESET PASSWORD
+   Public
+========================================================= */
+
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token and both password fields are required.",
+      });
+    }
+
+    if (
+      typeof token !== "string" ||
+      typeof newPassword !== "string" ||
+      typeof confirmPassword !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password reset request.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match.",
+      });
+    }
+
+    /*
+     * Hash token from URL and compare it
+     * with the hash stored in MongoDB.
+     */
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const resetRecord = await PasswordResetToken.findOne({
+      tokenHash,
+
+      expiresAt: {
+        $gt: new Date(),
+      },
+    });
+
+    if (!resetRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "Password reset link is invalid or has expired.",
+      });
+    }
+
+    const user = await User.findById(resetRecord.user);
+
+    if (!user) {
+      await PasswordResetToken.deleteMany({
+        user: resetRecord.user,
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: "Password reset link is invalid or has expired.",
+      });
+    }
+
+    /*
+     * Don't allow user to reset password
+     * to their existing password.
+     */
+    const samePassword = await bcrypt.compare(newPassword, user.password);
+
+    if (samePassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please choose a password different from your current password.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+
+    await user.save();
+
+    /*
+     * Password reset successful.
+     * Invalidate all reset links for this user.
+     */
+    await PasswordResetToken.deleteMany({
+      user: user._id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password reset successfully. You can now login with your new password.",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to reset your password right now. Please try again.",
     });
   }
 });

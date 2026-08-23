@@ -22,9 +22,34 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
     },
 
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
+    passwordResetToken: {
+      type: String,
+      default: null,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
+
     role: {
       type: String,
-      enum: ["worker", "employer"],
+      enum: ["worker", "employer", "admin"],
       default: "worker",
       required: true,
     },
@@ -61,9 +86,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports =
-  mongoose.models.User ||
-  mongoose.model("User", userSchema);
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);
