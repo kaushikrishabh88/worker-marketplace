@@ -15784,3 +15784,97 @@ main,
     padding: 14px;
   }
 }
+
+/* =========================================================
+   JOB DETAILS MODAL — FINAL LAYER FIX
+   Modal must stay above the entire website
+========================================================= */
+
+.job-details-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100vw !important;
+  height: 100vh !important;
+
+  z-index: 999999 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 24px !important;
+
+  background: rgba(15, 23, 42, 0.68) !important;
+
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+
+  overflow-y: auto !important;
+}
+
+.job-details-modal {
+  position: relative !important;
+
+  z-index: 1000000 !important;
+
+  width: min(610px, 100%) !important;
+
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+
+  margin: auto !important;
+
+  background: #ffffff !important;
+
+  isolation: isolate !important;
+}
+
+/* Keep all page sections below an opened modal */
+
+.hero,
+.hero-content,
+.hero-visual,
+.categories,
+.dashboard-summary,
+.find-worker-page,
+.find-jobs {
+  z-index: auto;
+}
+
+.job-details-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100vw;
+  height: 100dvh;
+
+  padding: 24px;
+
+  overflow-y: auto;
+
+  background: rgba(15, 23, 42, 0.68);
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.job-details-modal {
+  position: relative;
+
+  width: min(610px, 100%);
+  max-height: calc(100dvh - 48px);
+
+  margin: auto;
+
+  overflow-y: auto;
+
+  border-radius: 24px;
+
+  background: #ffffff;
+}
