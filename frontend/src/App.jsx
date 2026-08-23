@@ -390,15 +390,6 @@ function HomePage() {
   ========================================================= */
 
   const openWorkersBySkill = (skill) => {
-    /*
-     * Worker accounts cannot browse
-     * the FindWorker employer UI.
-     */
-
-    if (user?.role === "worker") {
-      return;
-    }
-
     window.dispatchEvent(
       new CustomEvent("workmate:filter-workers", {
         detail: {
@@ -410,10 +401,9 @@ function HomePage() {
     window.setTimeout(() => {
       document.getElementById("find-workers")?.scrollIntoView({
         behavior: "smooth",
-
         block: "start",
       });
-    }, 50);
+    }, 100);
   };
 
   /* =========================================================
@@ -1220,7 +1210,6 @@ function HomePage() {
               type="button"
               className="category-card category-card-button"
               onClick={() => openWorkersBySkill("chef")}
-              disabled={user?.role === "worker"}
             >
               <div>👨‍🍳</div>
 
@@ -1235,7 +1224,6 @@ function HomePage() {
               type="button"
               className="category-card category-card-button"
               onClick={() => openWorkersBySkill("baker")}
-              disabled={user?.role === "worker"}
             >
               <div>🍰</div>
 
@@ -1250,7 +1238,6 @@ function HomePage() {
               type="button"
               className="category-card category-card-button"
               onClick={() => openWorkersBySkill("fast-food")}
-              disabled={user?.role === "worker"}
             >
               <div>🍕</div>
 
@@ -1265,7 +1252,6 @@ function HomePage() {
               type="button"
               className="category-card category-card-button"
               onClick={() => openWorkersBySkill("halwai")}
-              disabled={user?.role === "worker"}
             >
               <div>🍬</div>
 
@@ -1316,6 +1302,8 @@ function HomePage() {
 
         {user?.role === "worker" && (
           <>
+            <FindWorker />
+
             <FindJobs />
 
             <MyApplications />

@@ -37,8 +37,10 @@ function FindWorker() {
     setSelectedLocation,
   ] = useState("");
 
-  const [sortBy, setSortBy] =
-    useState("relevant");
+  const [
+    sortBy,
+    setSortBy,
+  ] = useState("relevant");
 
   /* =========================================================
      FETCH WORKERS
@@ -49,12 +51,11 @@ function FindWorker() {
       async () => {
         try {
           setLoading(true);
-
           setFetchError("");
 
           const response =
             await fetch(
-              "http://localhost:5000/api/workers"
+              "http://localhost:5000/api/workers",
             );
 
           const data =
@@ -63,34 +64,28 @@ function FindWorker() {
           if (!response.ok) {
             throw new Error(
               data.message ||
-                "Failed to fetch workers."
+                "Failed to fetch workers.",
             );
           }
 
           setWorkers(
-            data.workers || []
+            data.workers || [],
           );
         } catch (error) {
           console.error(
             "Fetch workers error:",
-            error
+            error,
           );
 
           const message =
             error.message ||
             "Failed to fetch workers.";
 
-          setFetchError(
-            message
-          );
+          setFetchError(message);
 
-          showError(
-            message
-          );
+          showError(message);
         } finally {
-          setLoading(
-            false
-          );
+          setLoading(false);
         }
       };
 
@@ -103,43 +98,38 @@ function FindWorker() {
   ========================================================= */
 
   useEffect(() => {
-    const handlePopularSkill =
-      (event) => {
-        const skill =
-          event.detail?.skill;
+    const handlePopularSkill = (
+      event,
+    ) => {
+      const skill =
+        event?.detail?.skill;
 
-        if (!skill) {
-          return;
-        }
+      if (!skill) {
+        return;
+      }
 
-        /*
-          Reset other filters so clicking a
-          Popular Skill always gives useful
-          results for that skill.
-        */
+      /*
+       * Clear other filters so
+       * Popular Skill click always
+       * shows useful results.
+       */
 
-        setSearchTerm("");
+      setSearchTerm("");
+      setSelectedLocation("");
+      setSortBy("relevant");
 
-        setSelectedLocation("");
-
-        setSortBy(
-          "relevant"
-        );
-
-        setSelectedSkill(
-          skill
-        );
-      };
+      setSelectedSkill(skill);
+    };
 
     window.addEventListener(
       "workmate:filter-workers",
-      handlePopularSkill
+      handlePopularSkill,
     );
 
     return () => {
       window.removeEventListener(
         "workmate:filter-workers",
-        handlePopularSkill
+        handlePopularSkill,
       );
     };
   }, []);
@@ -175,7 +165,7 @@ function FindWorker() {
 
             const skills =
               Array.isArray(
-                worker.skills
+                worker.skills,
               )
                 ? worker.skills
                 : [];
@@ -183,60 +173,60 @@ function FindWorker() {
             const matchesSearch =
               !search ||
               name.includes(
-                search
+                search,
               ) ||
               role.includes(
-                search
+                search,
               ) ||
               location.includes(
-                search
+                search,
               ) ||
               skills.some(
                 (skill) =>
                   skill
                     .toLowerCase()
                     .includes(
-                      search
-                    )
+                      search,
+                    ),
               );
 
             const matchesSkill =
               !selectedSkill ||
               skills.some(
                 (skill) =>
-                  skill.toLowerCase() ===
-                  selectedSkill.toLowerCase()
+                  skill
+                    .toLowerCase() ===
+                  selectedSkill
+                    .toLowerCase(),
               );
 
             const matchesLocation =
               !selectedLocation ||
               location ===
-                selectedLocation.toLowerCase();
+                selectedLocation
+                  .toLowerCase();
 
             return (
               matchesSearch &&
               matchesSkill &&
               matchesLocation
             );
-          }
+          },
         );
 
       if (
-        sortBy ===
-        "rating"
+        sortBy === "rating"
       ) {
         return [
           ...result,
         ].sort(
           (a, b) =>
             Number(
-              b.rating ||
-                0
+              b.rating || 0,
             ) -
             Number(
-              a.rating ||
-                0
-            )
+              a.rating || 0,
+            ),
         );
       }
 
@@ -251,13 +241,13 @@ function FindWorker() {
             parseInt(
               b.experience ||
                 "0",
-              10
+              10,
             ) -
             parseInt(
               a.experience ||
                 "0",
-              10
-            )
+              10,
+            ),
         );
       }
 
@@ -274,42 +264,27 @@ function FindWorker() {
      CLEAR FILTERS
   ========================================================= */
 
-  const clearFilters =
-    () => {
-      setSearchTerm("");
-
-      setSelectedSkill(
-        ""
-      );
-
-      setSelectedLocation(
-        ""
-      );
-
-      setSortBy(
-        "relevant"
-      );
-    };
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedSkill("");
+    setSelectedLocation("");
+    setSortBy("relevant");
+  };
 
   /* =========================================================
      SCROLL TO RESULTS
   ========================================================= */
 
-  const scrollToResults =
-    () => {
-      document
-        .querySelector(
-          ".worker-list"
-        )
-        ?.scrollIntoView(
-          {
-            behavior:
-              "smooth",
-            block:
-              "start",
-          }
-        );
-    };
+  const scrollToResults = () => {
+    document
+      .querySelector(
+        ".worker-list",
+      )
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+  };
 
   /* =========================================================
      PAGE
@@ -320,6 +295,10 @@ function FindWorker() {
       className="find-worker-page"
       id="find-workers"
     >
+      {/* =====================================================
+          HEADING
+      ===================================================== */}
+
       <div className="find-worker-heading">
         <span>
           FIND SKILLED WORKERS
@@ -343,43 +322,49 @@ function FindWorker() {
       ===================================================== */}
 
       <div className="worker-search">
+        {/* SEARCH TERM */}
+
         <div className="search-field search-main">
-          <label>
+          <label htmlFor="worker-search-term">
             Search
           </label>
 
           <input
+            id="worker-search-term"
             type="text"
             value={
               searchTerm
             }
             onChange={(
-              event
+              event,
             ) =>
               setSearchTerm(
                 event.target
-                  .value
+                  .value,
               )
             }
             placeholder="Skill, role or worker name..."
           />
         </div>
 
+        {/* SKILL */}
+
         <div className="search-field">
-          <label>
+          <label htmlFor="worker-skill-filter">
             Skill
           </label>
 
           <select
+            id="worker-skill-filter"
             value={
               selectedSkill
             }
             onChange={(
-              event
+              event,
             ) =>
               setSelectedSkill(
                 event.target
-                  .value
+                  .value,
               )
             }
           >
@@ -409,21 +394,24 @@ function FindWorker() {
           </select>
         </div>
 
+        {/* LOCATION */}
+
         <div className="search-field">
-          <label>
+          <label htmlFor="worker-location-filter">
             Location
           </label>
 
           <select
+            id="worker-location-filter"
             value={
               selectedLocation
             }
             onChange={(
-              event
+              event,
             ) =>
               setSelectedLocation(
                 event.target
-                  .value
+                  .value,
               )
             }
           >
@@ -445,6 +433,8 @@ function FindWorker() {
           </select>
         </div>
 
+        {/* SEARCH BUTTON */}
+
         <button
           className="worker-search-btn"
           type="button"
@@ -454,7 +444,9 @@ function FindWorker() {
         >
           Search Workers
 
-          <span>→</span>
+          <span>
+            →
+          </span>
         </button>
       </div>
 
@@ -487,13 +479,14 @@ function FindWorker() {
           className="worker-sort"
           value={sortBy}
           onChange={(
-            event
+            event,
           ) =>
             setSortBy(
               event.target
-                .value
+                .value,
             )
           }
+          aria-label="Sort workers"
         >
           <option value="relevant">
             Most Relevant
@@ -517,8 +510,7 @@ function FindWorker() {
         {loading ? (
           <div className="empty-workers">
             <h3>
-              Loading
-              workers...
+              Loading workers...
             </h3>
 
             <p>
@@ -546,8 +538,8 @@ function FindWorker() {
               {fetchError}
             </p>
           </div>
-        ) : filteredWorkers
-            .length > 0 ? (
+        ) : filteredWorkers.length >
+          0 ? (
           filteredWorkers.map(
             (worker) => (
               <WorkerCard
@@ -558,7 +550,7 @@ function FindWorker() {
                   worker
                 }
               />
-            )
+            ),
           )
         ) : (
           <div className="empty-workers">
@@ -589,7 +581,9 @@ function FindWorker() {
             >
               Clear Filters
 
-              <span>↻</span>
+              <span>
+                ↻
+              </span>
             </button>
           </div>
         )}
