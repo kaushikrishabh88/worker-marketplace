@@ -2,8 +2,7 @@ import { useRef, useState } from "react";
 
 import ProfileAvatar from "./ProfileAvatar";
 import { useToast } from "./useToast";
-
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function EmployerProfile({ user, onUserUpdated }) {
   const toast = useToast();
@@ -50,7 +49,10 @@ function EmployerProfile({ user, onUserUpdated }) {
       aboutBusiness: updatedUser?.aboutBusiness || "",
     });
 
-    localStorage.setItem("workmateUser", JSON.stringify(updatedUser));
+    localStorage.setItem(
+      "workmateUser",
+      JSON.stringify(updatedUser),
+    );
 
     if (typeof onUserUpdated === "function") {
       onUserUpdated(updatedUser);
@@ -132,27 +134,32 @@ function EmployerProfile({ user, onUserUpdated }) {
     try {
       setSaving(true);
 
-      const response = await fetch(`${API_URL}/api/employer/profile`, {
-        method: "PUT",
+      const response = await fetch(
+        `${API_URL}/api/employer/profile`,
+        {
+          method: "PUT",
 
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            businessName: form.businessName.trim(),
+            location: form.location.trim(),
+            aboutBusiness: form.aboutBusiness.trim(),
+          }),
         },
-
-        body: JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          businessName: form.businessName.trim(),
-          location: form.location.trim(),
-          aboutBusiness: form.aboutBusiness.trim(),
-        }),
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to update profile.");
+        throw new Error(
+          data.message || "Unable to update profile.",
+        );
       }
 
       updateUserEverywhere(data.user);
@@ -163,9 +170,14 @@ function EmployerProfile({ user, onUserUpdated }) {
 
       toast.success("Profile updated successfully.");
     } catch (error) {
-      console.error("Employer profile update error:", error);
+      console.error(
+        "Employer profile update error:",
+        error,
+      );
 
-      toast.error(error.message || "Unable to update profile.");
+      toast.error(
+        error.message || "Unable to update profile.",
+      );
     } finally {
       setSaving(false);
     }
@@ -198,10 +210,16 @@ function EmployerProfile({ user, onUserUpdated }) {
 
     setError("");
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
 
     if (!allowedTypes.includes(file.type)) {
-      setError("Please choose a JPG, PNG or WebP image.");
+      setError(
+        "Please choose a JPG, PNG or WebP image.",
+      );
       return;
     }
 
@@ -224,31 +242,45 @@ function EmployerProfile({ user, onUserUpdated }) {
 
       formData.append("avatar", file);
 
-      const response = await fetch(`${API_URL}/api/profile/avatar`, {
-        method: "POST",
+      const response = await fetch(
+        `${API_URL}/api/profile/avatar`,
+        {
+          method: "POST",
 
-        headers: {
-          Authorization: `Bearer ${token}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: formData,
         },
-
-        body: formData,
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to upload profile photo.");
+        throw new Error(
+          data.message ||
+            "Unable to upload profile photo.",
+        );
       }
 
       updateUserEverywhere(data.user);
 
       setError("");
 
-      toast.success("Profile photo updated successfully.");
+      toast.success(
+        "Profile photo updated successfully.",
+      );
     } catch (error) {
-      console.error("Employer avatar upload error:", error);
+      console.error(
+        "Employer avatar upload error:",
+        error,
+      );
 
-      toast.error(error.message || "Unable to update profile photo.");
+      toast.error(
+        error.message ||
+          "Unable to update profile photo.",
+      );
     } finally {
       setUploading(false);
     }
@@ -263,7 +295,9 @@ function EmployerProfile({ user, onUserUpdated }) {
       return;
     }
 
-    const confirmed = window.confirm("Remove your profile photo?");
+    const confirmed = window.confirm(
+      "Remove your profile photo?",
+    );
 
     if (!confirmed) {
       return;
@@ -279,29 +313,43 @@ function EmployerProfile({ user, onUserUpdated }) {
     try {
       setRemovingPhoto(true);
 
-      const response = await fetch(`${API_URL}/api/profile/avatar`, {
-        method: "DELETE",
+      const response = await fetch(
+        `${API_URL}/api/profile/avatar`,
+        {
+          method: "DELETE",
 
-        headers: {
-          Authorization: `Bearer ${token}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to remove profile photo.");
+        throw new Error(
+          data.message ||
+            "Unable to remove profile photo.",
+        );
       }
 
       updateUserEverywhere(data.user);
 
       setError("");
 
-      toast.success("Profile photo removed successfully.");
+      toast.success(
+        "Profile photo removed successfully.",
+      );
     } catch (error) {
-      console.error("Remove employer photo error:", error);
+      console.error(
+        "Remove employer photo error:",
+        error,
+      );
 
-      toast.error(error.message || "Unable to remove profile photo.");
+      toast.error(
+        error.message ||
+          "Unable to remove profile photo.",
+      );
     } finally {
       setRemovingPhoto(false);
     }
@@ -338,18 +386,23 @@ function EmployerProfile({ user, onUserUpdated }) {
     try {
       setDeleting(true);
 
-      const response = await fetch(`${API_URL}/api/employer/account`, {
-        method: "DELETE",
+      const response = await fetch(
+        `${API_URL}/api/employer/account`,
+        {
+          method: "DELETE",
 
-        headers: {
-          Authorization: `Bearer ${token}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to delete account.");
+        throw new Error(
+          data.message || "Unable to delete account.",
+        );
       }
 
       /*
@@ -363,9 +416,14 @@ function EmployerProfile({ user, onUserUpdated }) {
 
       window.location.href = "/";
     } catch (error) {
-      console.error("Delete employer account error:", error);
+      console.error(
+        "Delete employer account error:",
+        error,
+      );
 
-      toast.error(error.message || "Unable to delete account.");
+      toast.error(
+        error.message || "Unable to delete account.",
+      );
 
       setDeleting(false);
     }
@@ -376,7 +434,10 @@ function EmployerProfile({ user, onUserUpdated }) {
   ========================================================= */
 
   return (
-    <section className="employer-profile" id="employer-profile">
+    <section
+      className="employer-profile"
+      id="employer-profile"
+    >
       <div className="employer-profile-card">
         <div className="employer-profile-heading">
           <span>EMPLOYER PROFILE</span>
@@ -384,8 +445,9 @@ function EmployerProfile({ user, onUserUpdated }) {
           <h2>Your business profile.</h2>
 
           <p>
-            Manage your employer details and profile photo. Workers can use this
-            information to recognise your business.
+            Manage your employer details and profile
+            photo. Workers can use this information to
+            recognise your business.
           </p>
         </div>
 
@@ -428,11 +490,15 @@ function EmployerProfile({ user, onUserUpdated }) {
                 onClick={handleRemovePhoto}
                 disabled={uploading || removingPhoto}
               >
-                {removingPhoto ? "Removing..." : "Remove Photo"}
+                {removingPhoto
+                  ? "Removing..."
+                  : "Remove Photo"}
               </button>
             )}
 
-            <small>JPG, PNG or WebP · Maximum 1 MB</small>
+            <small>
+              JPG, PNG or WebP · Maximum 1 MB
+            </small>
           </div>
 
           {/* DETAILS */}
@@ -443,37 +509,53 @@ function EmployerProfile({ user, onUserUpdated }) {
                 <div className="employer-profile-field">
                   <span>Full Name</span>
 
-                  <strong>{currentUser?.name || "Not added"}</strong>
+                  <strong>
+                    {currentUser?.name || "Not added"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
                   <span>Email Address</span>
 
-                  <strong>{currentUser?.email || "Not available"}</strong>
+                  <strong>
+                    {currentUser?.email ||
+                      "Not available"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
                   <span>Phone Number</span>
 
-                  <strong>{currentUser?.phone || "Not added"}</strong>
+                  <strong>
+                    {currentUser?.phone || "Not added"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
                   <span>Business / Shop Name</span>
 
-                  <strong>{currentUser?.businessName || "Not added"}</strong>
+                  <strong>
+                    {currentUser?.businessName ||
+                      "Not added"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
                   <span>Location</span>
 
-                  <strong>{currentUser?.location || "Not added"}</strong>
+                  <strong>
+                    {currentUser?.location ||
+                      "Not added"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
                   <span>About Business</span>
 
-                  <strong>{currentUser?.aboutBusiness || "Not added"}</strong>
+                  <strong>
+                    {currentUser?.aboutBusiness ||
+                      "Not added"}
+                  </strong>
                 </div>
 
                 <div className="employer-profile-field">
@@ -491,7 +573,10 @@ function EmployerProfile({ user, onUserUpdated }) {
                 </button>
               </>
             ) : (
-              <form className="employer-profile-form" onSubmit={handleSave}>
+              <form
+                className="employer-profile-form"
+                onSubmit={handleSave}
+              >
                 <label>
                   <span>Full Name</span>
 
@@ -514,7 +599,9 @@ function EmployerProfile({ user, onUserUpdated }) {
                     disabled
                   />
 
-                  <small>Email cannot be changed here.</small>
+                  <small>
+                    Email cannot be changed here.
+                  </small>
                 </label>
 
                 <label>
@@ -565,7 +652,9 @@ function EmployerProfile({ user, onUserUpdated }) {
                     maxLength="500"
                   />
 
-                  <small>{form.aboutBusiness.length}/500</small>
+                  <small>
+                    {form.aboutBusiness.length}/500
+                  </small>
                 </label>
 
                 <div className="employer-profile-form-actions">
@@ -574,7 +663,9 @@ function EmployerProfile({ user, onUserUpdated }) {
                     className="employer-profile-save-button"
                     disabled={saving}
                   >
-                    {saving ? "Saving..." : "💾 Save Changes"}
+                    {saving
+                      ? "Saving..."
+                      : "💾 Save Changes"}
                   </button>
 
                   <button
@@ -606,8 +697,8 @@ function EmployerProfile({ user, onUserUpdated }) {
             <h3>Delete Account</h3>
 
             <p>
-              Permanently delete your employer account, posted jobs and related
-              hiring data.
+              Permanently delete your employer account,
+              posted jobs and related hiring data.
             </p>
           </div>
 
@@ -617,7 +708,9 @@ function EmployerProfile({ user, onUserUpdated }) {
             onClick={handleDeleteAccount}
             disabled={deleting}
           >
-            {deleting ? "Deleting..." : "🗑️ Delete Account"}
+            {deleting
+              ? "Deleting..."
+              : "🗑️ Delete Account"}
           </button>
         </div>
       </div>

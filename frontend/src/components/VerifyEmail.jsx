@@ -8,7 +8,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function VerifyEmail() {
   const navigate = useNavigate();
@@ -43,11 +43,35 @@ function VerifyEmail() {
 
       try {
         const response = await fetch(
-          `${API_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`,
+          `${API_URL}/api/auth/verify-email?token=${encodeURIComponent(
+            token,
+          )}`,
         );
 
-        const data =
-          await response.json();
+        const contentType =
+          response.headers.get(
+            "content-type",
+          ) || "";
+
+        let data;
+
+        if (
+          contentType.includes(
+            "application/json",
+          )
+        ) {
+          data =
+            await response.json();
+        } else {
+          const text =
+            await response.text();
+
+          throw new Error(
+            text
+              ? "The verification server returned an unexpected response."
+              : "Unable to connect to the verification server.",
+          );
+        }
 
         if (cancelled) {
           return;
@@ -78,6 +102,16 @@ function VerifyEmail() {
 
         setStatus("error");
 
+        if (
+          error instanceof TypeError
+        ) {
+          setMessage(
+            "Unable to connect to WorkMate. Please check your connection and try again.",
+          );
+
+          return;
+        }
+
         setMessage(
           error.message ||
             "Unable to verify your email.",
@@ -97,7 +131,10 @@ function VerifyEmail() {
       <div className="verify-email-card">
         <div className="verify-email-brand">
           <strong>
-            Work<span>Mate</span>
+            Work
+            <span>
+              Mate
+            </span>
           </strong>
 
           <small>
@@ -108,29 +145,36 @@ function VerifyEmail() {
         <div
           className={`verify-email-icon verify-email-icon-${status}`}
         >
-          {status === "verifying"
+          {status ===
+          "verifying"
             ? "⏳"
-            : status === "success"
+            : status ===
+                "success"
               ? "✓"
               : "!"}
         </div>
 
         <h1>
-          {status === "verifying"
+          {status ===
+          "verifying"
             ? "Verifying your email..."
-            : status === "success"
+            : status ===
+                "success"
               ? "Email Verified!"
               : "Verification Failed"}
         </h1>
 
-        <p>{message}</p>
+        <p>
+          {message}
+        </p>
 
-        {status === "success" && (
+        {status ===
+          "success" && (
           <>
             <div className="verify-email-success-note">
               Your WorkMate account is
-              now active. You can sign in
-              using your email and
+              now active. You can sign
+              in using your email and
               password.
             </div>
 
@@ -138,7 +182,9 @@ function VerifyEmail() {
               type="button"
               className="verify-email-primary"
               onClick={() =>
-                navigate("/auth")
+                navigate(
+                  "/auth",
+                )
               }
             >
               Continue to Login →
@@ -146,18 +192,26 @@ function VerifyEmail() {
           </>
         )}
 
-        {status === "error" && (
+        {status ===
+          "error" && (
           <>
             <div className="verify-email-error-note">
-              The link may have expired or
-              already been used.
+              If you recently requested
+              another verification
+              email, make sure you are
+              opening the newest link.
+              Older verification links
+              stop working after a new
+              one is sent.
             </div>
 
             <button
               type="button"
               className="verify-email-primary"
               onClick={() =>
-                navigate("/auth")
+                navigate(
+                  "/auth",
+                )
               }
             >
               Back to WorkMate
@@ -165,7 +219,8 @@ function VerifyEmail() {
           </>
         )}
 
-        {status === "verifying" && (
+        {status ===
+          "verifying" && (
           <div className="verify-email-loader">
             <span></span>
             <span></span>

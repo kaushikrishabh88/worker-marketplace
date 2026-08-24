@@ -27,6 +27,7 @@ import VerifyEmail from "./components/VerifyEmail";
 import ResetPassword from "./components/ResetPassword";
 
 import { useLanguage } from "./i18n/useLanguage";
+import API_URL from "./api";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -54,6 +55,14 @@ function HomePage() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const [openingProfile, setOpeningProfile] = useState(false);
+
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
+
+  const [deleteAccountError, setDeleteAccountError] = useState("");
+
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   /* =========================================================
      PASSWORD FORM
@@ -148,26 +157,23 @@ function HomePage() {
     try {
       setChangingPassword(true);
 
-      const response = await fetch(
-        "http://localhost:5000/api/auth/change-password",
-        {
-          method: "PUT",
+      const response = await fetch(`${API_URL}/api/auth/change-password`, {
+        method: "PUT",
 
-          headers: {
-            "Content-Type": "application/json",
+        headers: {
+          "Content-Type": "application/json",
 
-            Authorization: `Bearer ${token}`,
-          },
-
-          body: JSON.stringify({
-            currentPassword: passwordForm.currentPassword,
-
-            newPassword: passwordForm.newPassword,
-
-            confirmPassword: passwordForm.confirmPassword,
-          }),
+          Authorization: `Bearer ${token}`,
         },
-      );
+
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+
+          newPassword: passwordForm.newPassword,
+
+          confirmPassword: passwordForm.confirmPassword,
+        }),
+      });
 
       const data = await response.json();
 
@@ -233,6 +239,7 @@ function HomePage() {
     setShowAccountMenu(false);
     setShowSettings(false);
     setShowPasswordForm(false);
+    setShowDeleteAccount(false);
 
     navigate("/");
 
@@ -270,6 +277,122 @@ function HomePage() {
     setShowSettings(false);
 
     handleLogout();
+  };
+
+  /* =========================================================
+     DELETE ACCOUNT
+  ========================================================= */
+
+  const handleOpenDeleteAccount = () => {
+    setShowAccountMenu(false);
+    setShowSettings(false);
+    setShowPasswordForm(false);
+
+    setDeleteAccountPassword("");
+    setDeleteAccountError("");
+    setShowDeleteAccount(true);
+  };
+
+  const handleCloseDeleteAccount = () => {
+    if (deletingAccount) {
+      return;
+    }
+
+    setShowDeleteAccount(false);
+    setDeleteAccountPassword("");
+    setDeleteAccountError("");
+  };
+
+  const handleDeleteAccount = async (event) => {
+    event.preventDefault();
+
+    setDeleteAccountError("");
+
+    if (!deleteAccountPassword) {
+      setDeleteAccountError(
+        "Please enter your current password to delete your account.",
+      );
+
+      return;
+    }
+
+    const token = localStorage.getItem("workmateToken");
+
+    if (!token) {
+      setDeleteAccountError(
+        "Your session has expired. Please login again.",
+      );
+
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+
+      const response = await fetch(`${API_URL}/api/auth/account`, {
+        method: "DELETE",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Authorization: `Bearer ${token}`,
+        },
+
+        body: JSON.stringify({
+          password: deleteAccountPassword,
+        }),
+      });
+
+      const contentType =
+        response.headers.get("content-type") || "";
+
+      let data = {};
+
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        await response.text();
+
+        throw new Error(
+          "The server returned an unexpected response. Please try again.",
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to delete account.",
+        );
+      }
+
+      localStorage.removeItem("workmateToken");
+      localStorage.removeItem("workmateUser");
+      localStorage.removeItem("workmateRememberEmail");
+
+      setShowDeleteAccount(false);
+
+      navigate("/");
+
+      window.location.reload();
+    } catch (error) {
+      console.error(
+        "Delete account error:",
+        error,
+      );
+
+      if (error instanceof TypeError) {
+        setDeleteAccountError(
+          "Unable to connect to WorkMate. Please check your connection and try again.",
+        );
+      } else {
+        setDeleteAccountError(
+          error.message ||
+            "Unable to delete your account. Please try again.",
+        );
+      }
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   /* =========================================================
@@ -317,42 +440,63 @@ function HomePage() {
        * replace with /api/workers/me
        */
 
-      const response = await fetch("http://localhost:5000/api/workers");
+      const response = await fetch(`${API_URL}/api/workers`);
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to load worker profile.");
+        throw new Error(
+          data.message ||
+            "Unable to load worker profile.",
+        );
       }
 
-      const currentUserId = user.id || user._id;
+      const currentUserId =
+        user.id ||
+        user._id;
 
-      const workerProfile = (data.workers || []).find((worker) => {
-        const workerUserId =
-          typeof worker.user === "object"
-            ? worker.user?._id || worker.user?.id
-            : worker.user;
+      const workerProfile =
+        (data.workers || []).find(
+          (worker) => {
+            const workerUserId =
+              typeof worker.user === "object"
+                ? worker.user?._id ||
+                  worker.user?.id
+                : worker.user;
 
-        return String(workerUserId || "") === String(currentUserId || "");
-      });
+            return (
+              String(workerUserId || "") ===
+              String(currentUserId || "")
+            );
+          },
+        );
 
       if (workerProfile?._id) {
-        navigate(`/workers/${workerProfile._id}`);
+        navigate(
+          `/workers/${workerProfile._id}`,
+        );
 
         return;
       }
 
-      document.getElementById("register-worker")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      document
+        .getElementById("register-worker")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
     } catch (error) {
-      console.error("Open worker profile error:", error);
+      console.error(
+        "Open worker profile error:",
+        error,
+      );
 
-      document.getElementById("register-worker")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      document
+        .getElementById("register-worker")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
     } finally {
       setOpeningProfile(false);
     }
@@ -363,26 +507,35 @@ function HomePage() {
   ========================================================= */
 
   const scrollToWorkers = () => {
-    document.getElementById("find-workers")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+      .getElementById("find-workers")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
 
   const scrollToJobs = () => {
-    const targetId = user?.role === "employer" ? "post-job" : "find-jobs";
+    const targetId =
+      user?.role === "employer"
+        ? "post-job"
+        : "find-jobs";
 
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+      .getElementById(targetId)
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
 
   const scrollToReceivedRequests = () => {
-    document.getElementById("received-requests")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+      .getElementById("received-requests")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
   };
 
   /* =========================================================
@@ -391,18 +544,23 @@ function HomePage() {
 
   const openWorkersBySkill = (skill) => {
     window.dispatchEvent(
-      new CustomEvent("workmate:filter-workers", {
-        detail: {
-          skill,
+      new CustomEvent(
+        "workmate:filter-workers",
+        {
+          detail: {
+            skill,
+          },
         },
-      }),
+      ),
     );
 
     window.setTimeout(() => {
-      document.getElementById("find-workers")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      document
+        .getElementById("find-workers")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
     }, 100);
   };
 
@@ -437,9 +595,13 @@ function HomePage() {
 
           {!user && (
             <>
-              <a href="#find-workers">{t("findWorkers")}</a>
+              <a href="#find-workers">
+                {t("findWorkers")}
+              </a>
 
-              <a href="#find-jobs">{t("findJobs")}</a>
+              <a href="#find-jobs">
+                {t("findJobs")}
+              </a>
             </>
           )}
 
@@ -447,23 +609,35 @@ function HomePage() {
 
           {user?.role === "employer" && (
             <>
-              <a href="#find-workers">{t("findWorkers")}</a>
+              <a href="#find-workers">
+                {t("findWorkers")}
+              </a>
 
               <a href="#sent-requests">
                 {t("myRequests")}
 
-                <NavBadges user={user} type="requests" />
+                <NavBadges
+                  user={user}
+                  type="requests"
+                />
               </a>
 
               <a href="#my-jobs">
                 {t("myJobs")}
 
-                <NavBadges user={user} type="jobs" />
+                <NavBadges
+                  user={user}
+                  type="jobs"
+                />
               </a>
 
-              <a href="#employer-profile">{t("myProfile")}</a>
+              <a href="#employer-profile">
+                {t("myProfile")}
+              </a>
 
-              <a href="#post-job">{t("postJob")}</a>
+              <a href="#post-job">
+                {t("postJob")}
+              </a>
             </>
           )}
 
@@ -471,25 +645,37 @@ function HomePage() {
 
           {user?.role === "worker" && (
             <>
-              <a href="#find-jobs">{t("findJobs")}</a>
+              <a href="#find-jobs">
+                {t("findJobs")}
+              </a>
 
               <a href="#my-applications">
                 {t("myApplications")}
 
-                <NavBadges user={user} type="applications" />
+                <NavBadges
+                  user={user}
+                  type="applications"
+                />
               </a>
 
               <a href="#received-requests">
                 {t("myRequests")}
 
-                <NavBadges user={user} type="requests" />
+                <NavBadges
+                  user={user}
+                  type="requests"
+                />
               </a>
             </>
           )}
 
-          <a href="#how">{t("howItWorks")}</a>
+          <a href="#how">
+            {t("howItWorks")}
+          </a>
 
-          <a href="#contact-us">Contact Us</a>
+          <a href="#contact-us">
+            Contact Us
+          </a>
         </div>
 
         {/* ===================================================
@@ -503,9 +689,13 @@ function HomePage() {
             <button
               type="button"
               className={
-                language === "en" ? "language-btn active" : "language-btn"
+                language === "en"
+                  ? "language-btn active"
+                  : "language-btn"
               }
-              onClick={() => changeLanguage("en")}
+              onClick={() =>
+                changeLanguage("en")
+              }
             >
               English
             </button>
@@ -513,9 +703,13 @@ function HomePage() {
             <button
               type="button"
               className={
-                language === "hi" ? "language-btn active" : "language-btn"
+                language === "hi"
+                  ? "language-btn active"
+                  : "language-btn"
               }
-              onClick={() => changeLanguage("hi")}
+              onClick={() =>
+                changeLanguage("hi")
+              }
             >
               हिंदी
             </button>
@@ -534,12 +728,18 @@ function HomePage() {
               <button
                 type="button"
                 className="logged-user"
-                onClick={() => setShowAccountMenu((previous) => !previous)}
-                aria-expanded={showAccountMenu}
+                onClick={() =>
+                  setShowAccountMenu(
+                    (previous) =>
+                      !previous,
+                  )
+                }
+                aria-expanded={
+                  showAccountMenu
+                }
                 aria-haspopup="menu"
                 style={{
                   cursor: "pointer",
-
                   font: "inherit",
                 }}
               >
@@ -557,7 +757,9 @@ function HomePage() {
                 />
 
                 <div className="logged-user-info">
-                  <strong>{user.name}</strong>
+                  <strong>
+                    {user.name}
+                  </strong>
 
                   <small>
                     {user.role === "worker"
@@ -571,14 +773,13 @@ function HomePage() {
                 <span
                   style={{
                     marginLeft: "4px",
-
                     fontSize: "12px",
-
-                    transition: "transform 0.2s ease",
-
-                    transform: showAccountMenu
-                      ? "rotate(180deg)"
-                      : "rotate(0deg)",
+                    transition:
+                      "transform 0.2s ease",
+                    transform:
+                      showAccountMenu
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)",
                   }}
                 >
                   ▾
@@ -594,23 +795,16 @@ function HomePage() {
                   role="menu"
                   style={{
                     position: "absolute",
-
                     top: "calc(100% + 10px)",
-
                     right: 0,
-
                     width: "230px",
-
                     background: "#ffffff",
-
-                    border: "1px solid #e5e7eb",
-
+                    border:
+                      "1px solid #e5e7eb",
                     borderRadius: "14px",
-
-                    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.14)",
-
+                    boxShadow:
+                      "0 18px 45px rgba(15, 23, 42, 0.14)",
                     padding: "8px",
-
                     zIndex: 3000,
                   }}
                 >
@@ -618,19 +812,17 @@ function HomePage() {
 
                   <div
                     style={{
-                      padding: "10px 12px 12px",
-
-                      borderBottom: "1px solid #f1f5f9",
-
+                      padding:
+                        "10px 12px 12px",
+                      borderBottom:
+                        "1px solid #f1f5f9",
                       marginBottom: "6px",
                     }}
                   >
                     <strong
                       style={{
                         display: "block",
-
                         fontSize: "14px",
-
                         color: "#1f2937",
                       }}
                     >
@@ -640,18 +832,14 @@ function HomePage() {
                     <span
                       style={{
                         display: "block",
-
                         marginTop: "3px",
-
                         fontSize: "12px",
-
                         color: "#64748b",
-
                         overflow: "hidden",
-
-                        textOverflow: "ellipsis",
-
-                        whiteSpace: "nowrap",
+                        textOverflow:
+                          "ellipsis",
+                        whiteSpace:
+                          "nowrap",
                       }}
                     >
                       {user.email}
@@ -660,25 +848,31 @@ function HomePage() {
 
                   {/* ACCOUNT SETTINGS */}
 
-                  {user.role !== "admin" && (
+                  {user.role !==
+                    "admin" && (
                     <button
                       type="button"
                       role="menuitem"
                       className="account-menu-item"
-                      onClick={handleOpenSettings}
+                      onClick={
+                        handleOpenSettings
+                      }
                     >
-                      <span className="account-menu-item-icon">⚙️</span>
+                      <span className="account-menu-item-icon">
+                        ⚙️
+                      </span>
 
-                      <span>Account Settings</span>
+                      <span>
+                        Account Settings
+                      </span>
                     </button>
                   )}
 
                   <div
                     style={{
                       height: "1px",
-
-                      background: "#f1f5f9",
-
+                      background:
+                        "#f1f5f9",
                       margin: "6px 0",
                     }}
                   />
@@ -691,27 +885,20 @@ function HomePage() {
                     onClick={handleLogout}
                     style={{
                       width: "100%",
-
                       display: "flex",
-
-                      alignItems: "center",
-
+                      alignItems:
+                        "center",
                       gap: "10px",
-
                       border: "none",
-
-                      background: "transparent",
-
-                      padding: "11px 12px",
-
-                      borderRadius: "9px",
-
+                      background:
+                        "transparent",
+                      padding:
+                        "11px 12px",
+                      borderRadius:
+                        "9px",
                       cursor: "pointer",
-
                       fontSize: "14px",
-
                       textAlign: "left",
-
                       color: "#b91c1c",
                     }}
                   >
@@ -724,11 +911,19 @@ function HomePage() {
             </div>
           ) : (
             <>
-              <button className="login-btn" type="button" onClick={goToAuth}>
+              <button
+                className="login-btn"
+                type="button"
+                onClick={goToAuth}
+              >
                 {t("login")}
               </button>
 
-              <button className="signup-btn" type="button" onClick={goToAuth}>
+              <button
+                className="signup-btn"
+                type="button"
+                onClick={goToAuth}
+              >
                 {t("getStarted")}
               </button>
             </>
@@ -741,155 +936,462 @@ function HomePage() {
           IMPORTANT: OUTSIDE NAV DROPDOWN
       ===================================================== */}
 
-      {showSettings && user && user.role !== "admin" && (
-        <div
-          className="settings-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              handleCloseSettings();
-            }
-          }}
-        >
+      {showSettings &&
+        user &&
+        user.role !== "admin" && (
           <div
-            className="settings-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="account-settings-title"
+            className="settings-overlay"
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                handleCloseSettings();
+              }
+            }}
           >
-            {/* HEADER */}
+            <div
+              className="settings-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="account-settings-title"
+            >
+              {/* HEADER */}
 
-            <div className="settings-header">
-              <div>
-                <span className="settings-kicker">ACCOUNT</span>
+              <div className="settings-header">
+                <div>
+                  <span className="settings-kicker">
+                    ACCOUNT
+                  </span>
 
-                <h2 id="account-settings-title">Account Settings</h2>
+                  <h2 id="account-settings-title">
+                    Account Settings
+                  </h2>
 
-                <p>Manage your WorkMate account and security.</p>
+                  <p>
+                    Manage your WorkMate
+                    account and security.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="settings-close"
+                  onClick={
+                    handleCloseSettings
+                  }
+                  aria-label="Close account settings"
+                >
+                  ×
+                </button>
               </div>
 
-              <button
-                type="button"
-                className="settings-close"
-                onClick={handleCloseSettings}
-                aria-label="Close account settings"
-              >
-                ×
-              </button>
-            </div>
+              {/* ACCOUNT IDENTITY */}
 
-            {/* ACCOUNT IDENTITY */}
+              <div className="settings-user-card">
+                <ProfileAvatar
+                  person={user}
+                  fallback={
+                    user.role ===
+                    "worker"
+                      ? "👨‍🍳"
+                      : "💼"
+                  }
+                  className="settings-avatar"
+                  alt={user.name}
+                />
 
-            <div className="settings-user-card">
-              <ProfileAvatar
-                person={user}
-                fallback={user.role === "worker" ? "👨‍🍳" : "💼"}
-                className="settings-avatar"
-                alt={user.name}
-              />
+                <div className="settings-user-info">
+                  <strong>
+                    {user.name}
+                  </strong>
 
-              <div className="settings-user-info">
-                <strong>{user.name}</strong>
-
-                <span>{user.email}</span>
-
-                <small>
-                  {user.role === "worker"
-                    ? "Worker Account"
-                    : "Employer Account"}
-                </small>
-              </div>
-            </div>
-
-            {/* PROFILE */}
-
-            <div className="settings-section">
-              <span className="settings-section-title">PROFILE</span>
-
-              <button
-                type="button"
-                className="settings-action"
-                onClick={handleSettingsProfile}
-                disabled={openingProfile}
-              >
-                <span className="settings-action-icon settings-profile-icon">
-                  👤
-                </span>
-
-                <span className="settings-action-copy">
-                  <strong>My Profile</strong>
+                  <span>
+                    {user.email}
+                  </span>
 
                   <small>
-                    {user.role === "worker"
-                      ? "View and manage your worker profile."
-                      : "Manage your employer and business details."}
+                    {user.role ===
+                    "worker"
+                      ? "Worker Account"
+                      : "Employer Account"}
                   </small>
+                </div>
+              </div>
+
+              {/* PROFILE */}
+
+              <div className="settings-section">
+                <span className="settings-section-title">
+                  PROFILE
                 </span>
 
-                <span className="settings-chevron">›</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="settings-action"
+                  onClick={
+                    handleSettingsProfile
+                  }
+                  disabled={
+                    openingProfile
+                  }
+                >
+                  <span className="settings-action-icon settings-profile-icon">
+                    👤
+                  </span>
 
-            {/* SECURITY */}
+                  <span className="settings-action-copy">
+                    <strong>
+                      My Profile
+                    </strong>
 
-            <div className="settings-section">
-              <span className="settings-section-title">SECURITY</span>
+                    <small>
+                      {user.role ===
+                      "worker"
+                        ? "View and manage your worker profile."
+                        : "Manage your employer and business details."}
+                    </small>
+                  </span>
 
-              <button
-                type="button"
-                className="settings-action"
-                onClick={handleSettingsPassword}
-              >
-                <span className="settings-action-icon settings-security-icon">
-                  🔐
+                  <span className="settings-chevron">
+                    ›
+                  </span>
+                </button>
+              </div>
+
+              {/* SECURITY */}
+
+              <div className="settings-section">
+                <span className="settings-section-title">
+                  SECURITY
                 </span>
 
-                <span className="settings-action-copy">
-                  <strong>Change Password</strong>
+                <button
+                  type="button"
+                  className="settings-action"
+                  onClick={
+                    handleSettingsPassword
+                  }
+                >
+                  <span className="settings-action-icon settings-security-icon">
+                    🔐
+                  </span>
 
-                  <small>Update your WorkMate account password.</small>
+                  <span className="settings-action-copy">
+                    <strong>
+                      Change Password
+                    </strong>
+
+                    <small>
+                      Update your WorkMate
+                      account password.
+                    </small>
+                  </span>
+
+                  <span className="settings-chevron">
+                    ›
+                  </span>
+                </button>
+              </div>
+
+              {/* SESSION */}
+
+              <div className="settings-section">
+                <span className="settings-section-title">
+                  SESSION
                 </span>
 
-                <span className="settings-chevron">›</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="settings-action settings-logout-action"
+                  onClick={
+                    handleSettingsLogout
+                  }
+                >
+                  <span className="settings-action-icon settings-logout-icon">
+                    ↪
+                  </span>
 
-            {/* SESSION */}
+                  <span className="settings-action-copy">
+                    <strong>
+                      Logout
+                    </strong>
 
-            <div className="settings-section">
-              <span className="settings-section-title">SESSION</span>
+                    <small>
+                      Sign out of this
+                      WorkMate session.
+                    </small>
+                  </span>
 
-              <button
-                type="button"
-                className="settings-action settings-logout-action"
-                onClick={handleSettingsLogout}
-              >
-                <span className="settings-action-icon settings-logout-icon">
-                  ↪
+                  <span className="settings-chevron">
+                    ›
+                  </span>
+                </button>
+              </div>
+
+              {/* DANGER ZONE */}
+
+              <div className="settings-section">
+                <span className="settings-section-title">
+                  DANGER ZONE
                 </span>
 
-                <span className="settings-action-copy">
-                  <strong>Logout</strong>
+                <button
+                  type="button"
+                  className="settings-action"
+                  onClick={
+                    handleOpenDeleteAccount
+                  }
+                  style={{
+                    borderColor:
+                      "#fecaca",
+                    background:
+                      "#fff7f7",
+                  }}
+                >
+                  <span
+                    className="settings-action-icon"
+                    style={{
+                      background:
+                        "#fee2e2",
+                      color:
+                        "#b91c1c",
+                    }}
+                  >
+                    🗑️
+                  </span>
 
-                  <small>Sign out of this WorkMate session.</small>
-                </span>
+                  <span className="settings-action-copy">
+                    <strong
+                      style={{
+                        color:
+                          "#b91c1c",
+                      }}
+                    >
+                      Delete Account
+                    </strong>
 
-                <span className="settings-chevron">›</span>
-              </button>
-            </div>
+                    <small>
+                      Permanently delete
+                      your WorkMate account
+                      and related account
+                      data. This cannot be
+                      undone.
+                    </small>
+                  </span>
 
-            {/* SECURITY NOTE */}
+                  <span
+                    className="settings-chevron"
+                    style={{
+                      color:
+                        "#b91c1c",
+                    }}
+                  >
+                    ›
+                  </span>
+                </button>
+              </div>
 
-            <div className="settings-security-note">
-              <span>🔒</span>
+              {/* SECURITY NOTE */}
 
-              <p>
-                Your password is never displayed inside WorkMate. Use Change
-                Password or Forgot Password whenever you need to update it.
-              </p>
+              <div className="settings-security-note">
+                <span>🔒</span>
+
+                <p>
+                  Your password is never
+                  displayed inside
+                  WorkMate. Use Change
+                  Password or Forgot
+                  Password whenever you
+                  need to update it.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      {/* =====================================================
+          DELETE ACCOUNT MODAL
+      ===================================================== */}
+
+      {showDeleteAccount &&
+        user &&
+        user.role !== "admin" && (
+          <div
+            className="password-modal-overlay"
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                handleCloseDeleteAccount();
+              }
+            }}
+          >
+            <div
+              className="password-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+            >
+              <div className="password-modal-header">
+                <div>
+                  <span
+                    className="password-modal-eyebrow"
+                    style={{
+                      color:
+                        "#b91c1c",
+                    }}
+                  >
+                    DANGER ZONE
+                  </span>
+
+                  <h2 id="delete-account-title">
+                    Delete Account
+                  </h2>
+
+                  <p>
+                    Permanently delete
+                    your WorkMate
+                    account. This action
+                    cannot be undone.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="password-modal-close"
+                  onClick={
+                    handleCloseDeleteAccount
+                  }
+                  disabled={
+                    deletingAccount
+                  }
+                  aria-label="Close delete account"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="password-form"
+                onSubmit={
+                  handleDeleteAccount
+                }
+              >
+                <div
+                  className="settings-security-note"
+                  style={{
+                    borderColor:
+                      "#fecaca",
+                    background:
+                      "#fff7f7",
+                  }}
+                >
+                  <span>⚠️</span>
+
+                  <p>
+                    Deleting your account
+                    removes your login
+                    account and related
+                    WorkMate account data.
+                    If you sign up again
+                    with the same email,
+                    you will need to
+                    verify that email
+                    again.
+                  </p>
+                </div>
+
+                <div className="password-field">
+                  <label htmlFor="deleteAccountPassword">
+                    Confirm your current
+                    password
+                  </label>
+
+                  <input
+                    id="deleteAccountPassword"
+                    type="password"
+                    value={
+                      deleteAccountPassword
+                    }
+                    onChange={(
+                      event,
+                    ) => {
+                      setDeleteAccountPassword(
+                        event.target
+                          .value,
+                      );
+
+                      if (
+                        deleteAccountError
+                      ) {
+                        setDeleteAccountError(
+                          "",
+                        );
+                      }
+                    }}
+                    autoComplete="current-password"
+                    placeholder="Enter your current password"
+                    disabled={
+                      deletingAccount
+                    }
+                    required
+                  />
+                </div>
+
+                {deleteAccountError && (
+                  <div
+                    className="password-message password-message-error"
+                    role="alert"
+                  >
+                    <span>!</span>
+
+                    <p>
+                      {
+                        deleteAccountError
+                      }
+                    </p>
+                  </div>
+                )}
+
+                <div className="password-modal-actions">
+                  <button
+                    type="button"
+                    className="password-cancel-btn"
+                    onClick={
+                      handleCloseDeleteAccount
+                    }
+                    disabled={
+                      deletingAccount
+                    }
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="password-submit-btn"
+                    disabled={
+                      deletingAccount ||
+                      !deleteAccountPassword
+                    }
+                    style={{
+                      background:
+                        "#b91c1c",
+                      borderColor:
+                        "#b91c1c",
+                    }}
+                  >
+                    {deletingAccount
+                      ? "Deleting Account..."
+                      : "Delete Account"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       {/* =====================================================
           CHANGE PASSWORD MODAL
@@ -899,7 +1401,10 @@ function HomePage() {
         <div
           className="password-modal-overlay"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               handleClosePasswordForm();
             }
           }}
@@ -914,18 +1419,29 @@ function HomePage() {
 
             <div className="password-modal-header">
               <div>
-                <span className="password-modal-eyebrow">ACCOUNT SECURITY</span>
+                <span className="password-modal-eyebrow">
+                  ACCOUNT SECURITY
+                </span>
 
-                <h2 id="change-password-title">Change Password</h2>
+                <h2 id="change-password-title">
+                  Change Password
+                </h2>
 
-                <p>Update your WorkMate account password.</p>
+                <p>
+                  Update your WorkMate
+                  account password.
+                </p>
               </div>
 
               <button
                 type="button"
                 className="password-modal-close"
-                onClick={handleClosePasswordForm}
-                disabled={changingPassword}
+                onClick={
+                  handleClosePasswordForm
+                }
+                disabled={
+                  changingPassword
+                }
                 aria-label="Close change password"
               >
                 ×
@@ -934,16 +1450,27 @@ function HomePage() {
 
             {/* FORM */}
 
-            <form className="password-form" onSubmit={handleChangePassword}>
+            <form
+              className="password-form"
+              onSubmit={
+                handleChangePassword
+              }
+            >
               <div className="password-field">
-                <label htmlFor="currentPassword">Current Password</label>
+                <label htmlFor="currentPassword">
+                  Current Password
+                </label>
 
                 <input
                   id="currentPassword"
                   type="password"
                   name="currentPassword"
-                  value={passwordForm.currentPassword}
-                  onChange={handlePasswordChange}
+                  value={
+                    passwordForm.currentPassword
+                  }
+                  onChange={
+                    handlePasswordChange
+                  }
                   autoComplete="current-password"
                   placeholder="Enter current password"
                   required
@@ -951,32 +1478,47 @@ function HomePage() {
               </div>
 
               <div className="password-field">
-                <label htmlFor="newPassword">New Password</label>
+                <label htmlFor="newPassword">
+                  New Password
+                </label>
 
                 <input
                   id="newPassword"
                   type="password"
                   name="newPassword"
-                  value={passwordForm.newPassword}
-                  onChange={handlePasswordChange}
+                  value={
+                    passwordForm.newPassword
+                  }
+                  onChange={
+                    handlePasswordChange
+                  }
                   autoComplete="new-password"
                   placeholder="Enter new password"
                   minLength="6"
                   required
                 />
 
-                <small>Use at least 6 characters.</small>
+                <small>
+                  Use at least 6
+                  characters.
+                </small>
               </div>
 
               <div className="password-field">
-                <label htmlFor="confirmPassword">Confirm New Password</label>
+                <label htmlFor="confirmPassword">
+                  Confirm New Password
+                </label>
 
                 <input
                   id="confirmPassword"
                   type="password"
                   name="confirmPassword"
-                  value={passwordForm.confirmPassword}
-                  onChange={handlePasswordChange}
+                  value={
+                    passwordForm.confirmPassword
+                  }
+                  onChange={
+                    handlePasswordChange
+                  }
                   autoComplete="new-password"
                   placeholder="Re-enter new password"
                   minLength="6"
@@ -993,7 +1535,9 @@ function HomePage() {
                 >
                   <span>!</span>
 
-                  <p>{passwordError}</p>
+                  <p>
+                    {passwordError}
+                  </p>
                 </div>
               )}
 
@@ -1006,7 +1550,9 @@ function HomePage() {
                 >
                   <span>✓</span>
 
-                  <p>{passwordMessage}</p>
+                  <p>
+                    {passwordMessage}
+                  </p>
                 </div>
               )}
 
@@ -1016,8 +1562,12 @@ function HomePage() {
                 <button
                   type="button"
                   className="password-cancel-btn"
-                  onClick={handleClosePasswordForm}
-                  disabled={changingPassword}
+                  onClick={
+                    handleClosePasswordForm
+                  }
+                  disabled={
+                    changingPassword
+                  }
                 >
                   Cancel
                 </button>
@@ -1025,9 +1575,13 @@ function HomePage() {
                 <button
                   type="submit"
                   className="password-submit-btn"
-                  disabled={changingPassword}
+                  disabled={
+                    changingPassword
+                  }
                 >
-                  {changingPassword ? "Changing..." : "Change Password"}
+                  {changingPassword
+                    ? "Changing..."
+                    : "Change Password"}
                 </button>
               </div>
             </form>
@@ -1059,14 +1613,23 @@ function HomePage() {
             <h1>
               {t("heroTitleStart")}
 
-              <span> {t("heroTitleHighlight")}</span>
+              <span>
+                {" "}
+                {t(
+                  "heroTitleHighlight",
+                )}
+              </span>
 
               <br />
 
               {t("heroTitleEnd")}
             </h1>
 
-            <p>{t("heroDescription")}</p>
+            <p>
+              {t(
+                "heroDescription",
+              )}
+            </p>
 
             {/* BUTTONS */}
 
@@ -1075,10 +1638,18 @@ function HomePage() {
                 className="primary-btn"
                 type="button"
                 onClick={
-                  user?.role === "worker" ? scrollToJobs : scrollToWorkers
+                  user?.role ===
+                  "worker"
+                    ? scrollToJobs
+                    : scrollToWorkers
                 }
               >
-                {user?.role === "worker" ? t("findAJob") : t("findAWorker")}{" "}
+                {user?.role ===
+                "worker"
+                  ? t("findAJob")
+                  : t(
+                      "findAWorker",
+                    )}{" "}
                 <span>→</span>
               </button>
 
@@ -1086,16 +1657,23 @@ function HomePage() {
                 className="secondary-btn"
                 type="button"
                 onClick={
-                  user?.role === "worker"
+                  user?.role ===
+                  "worker"
                     ? scrollToReceivedRequests
                     : scrollToJobs
                 }
               >
-                {user?.role === "worker"
-                  ? t("myRequests")
-                  : user?.role === "employer"
+                {user?.role ===
+                "worker"
+                  ? t(
+                      "myRequests",
+                    )
+                  : user?.role ===
+                      "employer"
                     ? t("postJob")
-                    : t("findAJob")}{" "}
+                    : t(
+                        "findAJob",
+                      )}{" "}
                 <span>→</span>
               </button>
             </div>
@@ -1114,9 +1692,17 @@ function HomePage() {
               </div>
 
               <div>
-                <strong>{t("skilledPeople")}</strong>
+                <strong>
+                  {t(
+                    "skilledPeople",
+                  )}
+                </strong>
 
-                <small>{t("builtForLocal")}</small>
+                <small>
+                  {t(
+                    "builtForLocal",
+                  )}
+                </small>
               </div>
             </div>
           </div>
@@ -1127,66 +1713,137 @@ function HomePage() {
 
           <div className="hero-visual">
             <div className="floating-card card-one">
-              <div className="mini-icon">🍰</div>
-
-              <div>
-                <strong>{t("expertBaker")}</strong>
-
-                <small>{t("threeYearsExperience")}</small>
+              <div className="mini-icon">
+                🍰
               </div>
 
-              <span className="verified">✓</span>
+              <div>
+                <strong>
+                  {t(
+                    "expertBaker",
+                  )}
+                </strong>
+
+                <small>
+                  {t(
+                    "threeYearsExperience",
+                  )}
+                </small>
+              </div>
+
+              <span className="verified">
+                ✓
+              </span>
             </div>
 
             <div className="worker-card">
-              <div className="worker-image">👨‍🍳</div>
+              <div className="worker-image">
+                👨‍🍳
+              </div>
 
               <div className="worker-info">
                 <div className="worker-top">
                   <div>
-                    <h3>{t("skilledWorker")}</h3>
+                    <h3>
+                      {t(
+                        "skilledWorker",
+                      )}
+                    </h3>
 
-                    <p>{t("bakeryFastFood")}</p>
+                    <p>
+                      {t(
+                        "bakeryFastFood",
+                      )}
+                    </p>
                   </div>
 
                   <span className="online-dot"></span>
                 </div>
 
                 <div className="skills">
-                  <span>🍕 {t("pizza")}</span>
+                  <span>
+                    🍕{" "}
+                    {t("pizza")}
+                  </span>
 
-                  <span>🍔 {t("burger")}</span>
+                  <span>
+                    🍔{" "}
+                    {t(
+                      "burger",
+                    )}
+                  </span>
 
-                  <span>🍰 {t("bakery")}</span>
+                  <span>
+                    🍰{" "}
+                    {t(
+                      "bakery",
+                    )}
+                  </span>
                 </div>
 
                 <div className="worker-details">
-                  <span>📍 {t("nearby")}</span>
+                  <span>
+                    📍{" "}
+                    {t(
+                      "nearby",
+                    )}
+                  </span>
 
-                  <span>⭐ {t("verified")}</span>
+                  <span>
+                    ⭐{" "}
+                    {t(
+                      "verified",
+                    )}
+                  </span>
 
-                  <span>✓ {t("available")}</span>
+                  <span>
+                    ✓{" "}
+                    {t(
+                      "available",
+                    )}
+                  </span>
                 </div>
 
                 <button
                   className="profile-btn"
                   type="button"
                   onClick={
-                    user?.role === "worker" ? scrollToJobs : scrollToWorkers
+                    user?.role ===
+                    "worker"
+                      ? scrollToJobs
+                      : scrollToWorkers
                   }
                 >
-                  {user?.role === "worker" ? t("viewJobs") : t("viewWorkers")} →
+                  {user?.role ===
+                  "worker"
+                    ? t(
+                        "viewJobs",
+                      )
+                    : t(
+                        "viewWorkers",
+                      )}{" "}
+                  →
                 </button>
               </div>
             </div>
 
             <div className="floating-card card-two">
-              <span className="match-icon">⚡</span>
+              <span className="match-icon">
+                ⚡
+              </span>
 
               <div>
-                <strong>{t("smartMatch")}</strong>
+                <strong>
+                  {t(
+                    "smartMatch",
+                  )}
+                </strong>
 
-                <small>{t("findRightSkills")}</small>
+                <small>
+                  {t(
+                    "findRightSkills",
+                  )}
+                </small>
               </div>
             </div>
           </div>
@@ -1196,11 +1853,22 @@ function HomePage() {
             POPULAR SKILLS
         =================================================== */}
 
-        <section className="categories" id="how">
+        <section
+          className="categories"
+          id="how"
+        >
           <div className="section-heading">
-            <span>{t("popularSkills")}</span>
+            <span>
+              {t(
+                "popularSkills",
+              )}
+            </span>
 
-            <h2>{t("skillsHeading")}</h2>
+            <h2>
+              {t(
+                "skillsHeading",
+              )}
+            </h2>
           </div>
 
           <div className="category-grid">
@@ -1209,13 +1877,27 @@ function HomePage() {
             <button
               type="button"
               className="category-card category-card-button"
-              onClick={() => openWorkersBySkill("chef")}
+              onClick={() =>
+                openWorkersBySkill(
+                  "chef",
+                )
+              }
             >
-              <div>👨‍🍳</div>
+              <div>
+                👨‍🍳
+              </div>
 
-              <h3>{t("chefCook")}</h3>
+              <h3>
+                {t(
+                  "chefCook",
+                )}
+              </h3>
 
-              <p>{t("chefCookDescription")}</p>
+              <p>
+                {t(
+                  "chefCookDescription",
+                )}
+              </p>
             </button>
 
             {/* BAKER */}
@@ -1223,13 +1905,25 @@ function HomePage() {
             <button
               type="button"
               className="category-card category-card-button"
-              onClick={() => openWorkersBySkill("baker")}
+              onClick={() =>
+                openWorkersBySkill(
+                  "baker",
+                )
+              }
             >
               <div>🍰</div>
 
-              <h3>{t("baker")}</h3>
+              <h3>
+                {t(
+                  "baker",
+                )}
+              </h3>
 
-              <p>{t("bakerDescription")}</p>
+              <p>
+                {t(
+                  "bakerDescription",
+                )}
+              </p>
             </button>
 
             {/* FAST FOOD */}
@@ -1237,13 +1931,25 @@ function HomePage() {
             <button
               type="button"
               className="category-card category-card-button"
-              onClick={() => openWorkersBySkill("fast-food")}
+              onClick={() =>
+                openWorkersBySkill(
+                  "fast-food",
+                )
+              }
             >
               <div>🍕</div>
 
-              <h3>{t("fastFood")}</h3>
+              <h3>
+                {t(
+                  "fastFood",
+                )}
+              </h3>
 
-              <p>{t("fastFoodDescription")}</p>
+              <p>
+                {t(
+                  "fastFoodDescription",
+                )}
+              </p>
             </button>
 
             {/* HALWAI */}
@@ -1251,13 +1957,25 @@ function HomePage() {
             <button
               type="button"
               className="category-card category-card-button"
-              onClick={() => openWorkersBySkill("halwai")}
+              onClick={() =>
+                openWorkersBySkill(
+                  "halwai",
+                )
+              }
             >
               <div>🍬</div>
 
-              <h3>{t("halwai")}</h3>
+              <h3>
+                {t(
+                  "halwai",
+                )}
+              </h3>
 
-              <p>{t("halwaiDescription")}</p>
+              <p>
+                {t(
+                  "halwaiDescription",
+                )}
+              </p>
             </button>
           </div>
         </section>
@@ -1266,7 +1984,13 @@ function HomePage() {
             DASHBOARD
         =================================================== */}
 
-        {user && user.role !== "admin" && <DashboardSummary user={user} />}
+        {user &&
+          user.role !==
+            "admin" && (
+            <DashboardSummary
+              user={user}
+            />
+          )}
 
         {/* ===================================================
             GUEST
@@ -1284,7 +2008,8 @@ function HomePage() {
             EMPLOYER
         =================================================== */}
 
-        {user?.role === "employer" && (
+        {user?.role ===
+          "employer" && (
           <>
             <FindWorker />
 
@@ -1300,7 +2025,8 @@ function HomePage() {
             WORKER
         =================================================== */}
 
-        {user?.role === "worker" && (
+        {user?.role ===
+          "worker" && (
           <>
             <FindWorker />
 
@@ -1318,12 +2044,24 @@ function HomePage() {
             BOTTOM CTA
         =================================================== */}
 
-        {user?.role !== "admin" && (
-          <section className="cta-section" id="jobs">
+        {user?.role !==
+          "admin" && (
+          <section
+            className="cta-section"
+            id="jobs"
+          >
             <div>
-              <span>{t("readyToGetStarted")}</span>
+              <span>
+                {t(
+                  "readyToGetStarted",
+                )}
+              </span>
 
-              <h2>{t("nextOpportunity")}</h2>
+              <h2>
+                {t(
+                  "nextOpportunity",
+                )}
+              </h2>
             </div>
 
             {user ? (
@@ -1331,17 +2069,34 @@ function HomePage() {
                 className="primary-btn"
                 type="button"
                 onClick={
-                  user.role === "employer" ? scrollToWorkers : scrollToJobs
+                  user.role ===
+                  "employer"
+                    ? scrollToWorkers
+                    : scrollToJobs
                 }
               >
-                {user.role === "employer"
-                  ? t("exploreWorkers")
-                  : t("exploreJobs")}{" "}
+                {user.role ===
+                "employer"
+                  ? t(
+                      "exploreWorkers",
+                    )
+                  : t(
+                      "exploreJobs",
+                    )}{" "}
                 <span>→</span>
               </button>
             ) : (
-              <button className="primary-btn" type="button" onClick={goToAuth}>
-                {t("getStarted")} <span>→</span>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={
+                  goToAuth
+                }
+              >
+                {t(
+                  "getStarted",
+                )}{" "}
+                <span>→</span>
               </button>
             )}
           </section>
@@ -1351,13 +2106,21 @@ function HomePage() {
             EMPLOYER PROFILE
         =================================================== */}
 
-        {user?.role === "employer" && <EmployerProfile user={user} />}
+        {user?.role ===
+          "employer" && (
+          <EmployerProfile
+            user={user}
+          />
+        )}
 
         {/* ===================================================
             CONTACT US
         =================================================== */}
 
-        {user?.role !== "admin" && <ContactUs />}
+        {user?.role !==
+          "admin" && (
+          <ContactUs />
+        )}
       </main>
     </div>
   );
@@ -1372,19 +2135,52 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/auth"
+            element={<Auth />}
+          />
 
-          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route
+            path="/verify-email"
+            element={
+              <VerifyEmail />
+            }
+          />
 
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route
+            path="/reset-password"
+            element={
+              <ResetPassword />
+            }
+          />
 
-          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route
+            path="/admin/login"
+            element={
+              <AdminLogin />
+            }
+          />
 
-          <Route path="/admin/messages" element={<AdminMessages />} />
+          <Route
+            path="/admin/messages"
+            element={
+              <AdminMessages />
+            }
+          />
 
-          <Route path="/workers/:id" element={<WorkerProfile />} />
+          <Route
+            path="/workers/:id"
+            element={
+              <WorkerProfile />
+            }
+          />
 
-          <Route path="*" element={<HomePage />} />
+          <Route
+            path="*"
+            element={
+              <HomePage />
+            }
+          />
         </Routes>
       </BrowserRouter>
     </ToastProvider>

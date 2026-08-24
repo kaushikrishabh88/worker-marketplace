@@ -7,6 +7,7 @@ import {
 import { createPortal } from "react-dom";
 import { useToast } from "./useToast";
 import ProfileAvatar from "./ProfileAvatar";
+import API_URL from "../api";
 
 function FindJobs() {
   const toast = useToast();
@@ -62,7 +63,7 @@ function FindJobs() {
 
         const response =
           await fetch(
-            "http://localhost:5000/api/jobs",
+            `${API_URL}/api/jobs`,
           );
 
         const data =
@@ -145,7 +146,7 @@ function FindJobs() {
         try {
           const response =
             await fetch(
-              "http://localhost:5000/api/applications/my",
+              `${API_URL}/api/applications/my`,
               {
                 headers: {
                   Authorization:
@@ -400,7 +401,7 @@ function FindJobs() {
 
         const response =
           await fetch(
-            `http://localhost:5000/api/jobs/${selectedJob._id}/apply`,
+            `${API_URL}/api/jobs/${selectedJob._id}/apply`,
             {
               method: "POST",
 
@@ -865,8 +866,6 @@ function FindJobs() {
 
       {/* =====================================================
           JOB DETAILS MODAL
-          Rendered with React Portal so it cannot be clipped
-          by the Find Jobs section or any parent stacking context.
       ===================================================== */}
 
       {selectedJob &&
@@ -908,6 +907,7 @@ function FindJobs() {
 
               <p className="job-details-company">
                 Posted by{" "}
+
                 <strong>
                   {selectedJob.employer
                     ?.businessName ||

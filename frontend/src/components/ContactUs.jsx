@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useToast } from "./useToast";
-
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function ContactUs() {
   const toast = useToast();

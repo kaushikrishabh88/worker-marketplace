@@ -10,6 +10,7 @@ const uiTranslations = {
   "Change Photo": "फोटो बदलें",
   "Choose Photo": "फोटो चुनें",
   "Contact request sent successfully!": "संपर्क अनुरोध सफलतापूर्वक भेज दिया गया!",
+  "Contact Us": "संपर्क करें",
   "Create Account →": "खाता बनाएँ →",
   "Create Worker Profile →": "कामगार प्रोफ़ाइल बनाएँ →",
   "Create your account": "अपना खाता बनाएँ",

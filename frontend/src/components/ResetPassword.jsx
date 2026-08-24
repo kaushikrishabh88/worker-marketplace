@@ -4,6 +4,8 @@ import {
   useSearchParams,
 } from "react-router-dom";
 
+import API_URL from "../api";
+
 function ResetPassword() {
   const navigate =
     useNavigate();
@@ -102,7 +104,7 @@ function ResetPassword() {
 
       const response =
         await fetch(
-          "http://localhost:5000/api/auth/reset-password",
+          `${API_URL}/api/auth/reset-password`,
           {
             method: "POST",
 

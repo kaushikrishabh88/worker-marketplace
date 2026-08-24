@@ -7,6 +7,8 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
+import API_URL from "../api";
+
 function DashboardSummary({ user }) {
   const navigate = useNavigate();
 
@@ -97,7 +99,7 @@ function DashboardSummary({ user }) {
           workersData,
         ] = await Promise.all([
           fetchJson(
-            "http://localhost:5000/api/applications/my",
+            `${API_URL}/api/applications/my`,
             {
               headers:
                 authHeaders,
@@ -105,7 +107,7 @@ function DashboardSummary({ user }) {
           ),
 
           fetchJson(
-            "http://localhost:5000/api/contact-requests/my",
+            `${API_URL}/api/contact-requests/my`,
             {
               headers:
                 authHeaders,
@@ -119,7 +121,7 @@ function DashboardSummary({ user }) {
            * replace karenge.
            */
           fetchJson(
-            "http://localhost:5000/api/workers",
+            `${API_URL}/api/workers`,
           ),
         ]);
 
@@ -197,7 +199,7 @@ function DashboardSummary({ user }) {
           requestsData,
         ] = await Promise.all([
           fetchJson(
-            "http://localhost:5000/api/jobs/my",
+            `${API_URL}/api/jobs/my`,
             {
               headers:
                 authHeaders,
@@ -205,7 +207,7 @@ function DashboardSummary({ user }) {
           ),
 
           fetchJson(
-            "http://localhost:5000/api/contact-requests/sent",
+            `${API_URL}/api/contact-requests/sent`,
             {
               headers:
                 authHeaders,
@@ -381,9 +383,6 @@ function DashboardSummary({ user }) {
         return;
       }
 
-      /*
-       * Worker hasn't created profile yet.
-       */
       scrollToSection(
         "register-worker",
       );
@@ -414,10 +413,6 @@ function DashboardSummary({ user }) {
       id="dashboard-summary"
       aria-labelledby="dashboard-heading"
     >
-      {/* =====================================================
-          HEADING
-      ===================================================== */}
-
       <div className="dashboard-summary-heading">
         <span>
           YOUR DASHBOARD
@@ -433,10 +428,6 @@ function DashboardSummary({ user }) {
           of your WorkMate activity.
         </p>
       </div>
-
-      {/* =====================================================
-          LOADING
-      ===================================================== */}
 
       {loading && (
         <div
@@ -456,10 +447,6 @@ function DashboardSummary({ user }) {
           </div>
         </div>
       )}
-
-      {/* =====================================================
-          ERROR
-      ===================================================== */}
 
       {!loading && error && (
         <div
@@ -491,18 +478,10 @@ function DashboardSummary({ user }) {
         </div>
       )}
 
-      {/* =====================================================
-          WORKER DASHBOARD
-      ===================================================== */}
-
       {!loading &&
         !error &&
         user.role === "worker" && (
           <div className="dashboard-stat-grid">
-            {/* ===============================================
-                PROFILE
-            =============================================== */}
-
             <button
               type="button"
               className="dashboard-stat-card dashboard-profile-card dashboard-clickable-card"
@@ -536,10 +515,6 @@ function DashboardSummary({ user }) {
               </p>
             </button>
 
-            {/* ===============================================
-                APPLICATIONS
-            =============================================== */}
-
             <button
               type="button"
               className="dashboard-stat-card dashboard-clickable-card"
@@ -569,10 +544,6 @@ function DashboardSummary({ user }) {
                 for.
               </p>
             </button>
-
-            {/* ===============================================
-                ACCEPTED
-            =============================================== */}
 
             <button
               type="button"
@@ -604,10 +575,6 @@ function DashboardSummary({ user }) {
               </p>
             </button>
 
-            {/* ===============================================
-                PENDING
-            =============================================== */}
-
             <button
               type="button"
               className="dashboard-stat-card dashboard-clickable-card"
@@ -638,10 +605,6 @@ function DashboardSummary({ user }) {
                 response.
               </p>
             </button>
-
-            {/* ===============================================
-                EMPLOYER REQUESTS
-            =============================================== */}
 
             <button
               type="button"
@@ -675,19 +638,11 @@ function DashboardSummary({ user }) {
           </div>
         )}
 
-      {/* =====================================================
-          EMPLOYER DASHBOARD
-      ===================================================== */}
-
       {!loading &&
         !error &&
         user.role ===
           "employer" && (
           <div className="dashboard-stat-grid">
-            {/* ===============================================
-                EMPLOYER PROFILE
-            =============================================== */}
-
             <button
               type="button"
               className="dashboard-stat-card dashboard-profile-card dashboard-clickable-card"
@@ -713,10 +668,6 @@ function DashboardSummary({ user }) {
                 employer profile.
               </p>
             </button>
-
-            {/* ===============================================
-                MY JOBS
-            =============================================== */}
 
             <button
               type="button"
@@ -746,10 +697,6 @@ function DashboardSummary({ user }) {
                 Jobs you have posted.
               </p>
             </button>
-
-            {/* ===============================================
-                OPEN JOBS
-            =============================================== */}
 
             <button
               type="button"
@@ -781,10 +728,6 @@ function DashboardSummary({ user }) {
               </p>
             </button>
 
-            {/* ===============================================
-                SENT REQUESTS
-            =============================================== */}
-
             <button
               type="button"
               className="dashboard-stat-card dashboard-clickable-card"
@@ -814,10 +757,6 @@ function DashboardSummary({ user }) {
                 contacted.
               </p>
             </button>
-
-            {/* ===============================================
-                ACCEPTED WORKERS
-            =============================================== */}
 
             <button
               type="button"

@@ -2,8 +2,15 @@ import {
   useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
-import { useToast } from "./useToast";
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useToast,
+} from "./useToast";
+
+import API_URL from "../api";
 
 function WorkerRegistration() {
   const navigate = useNavigate();
@@ -11,7 +18,7 @@ function WorkerRegistration() {
 
   const token =
     localStorage.getItem(
-      "workmateToken"
+      "workmateToken",
     );
 
   /* =========================================================
@@ -23,18 +30,18 @@ function WorkerRegistration() {
       try {
         const storedUser =
           localStorage.getItem(
-            "workmateUser"
+            "workmateUser",
           );
 
         return storedUser
           ? JSON.parse(
-              storedUser
+              storedUser,
             )
           : null;
       } catch (error) {
         console.error(
           "Unable to read logged-in user:",
-          error
+          error,
         );
 
         return null;
@@ -79,11 +86,40 @@ function WorkerRegistration() {
   ] = useState("");
 
   /* =========================================================
+     SAFE RESPONSE PARSER
+  ========================================================= */
+
+  const parseResponse =
+    async (response) => {
+      const contentType =
+        response.headers.get(
+          "content-type",
+        ) || "";
+
+      if (
+        contentType.includes(
+          "application/json",
+        )
+      ) {
+        return response.json();
+      }
+
+      const text =
+        await response.text();
+
+      throw new Error(
+        text
+          ? "The server returned an unexpected response."
+          : "Unable to connect to WorkMate server.",
+      );
+    };
+
+  /* =========================================================
      INPUT CHANGE
   ========================================================= */
 
   const handleChange = (
-    event
+    event,
   ) => {
     const {
       name,
@@ -94,7 +130,7 @@ function WorkerRegistration() {
       (previous) => ({
         ...previous,
         [name]: value,
-      })
+      }),
     );
   };
 
@@ -103,7 +139,7 @@ function WorkerRegistration() {
   ========================================================= */
 
   const handleAvatarChange = (
-    event
+    event,
   ) => {
     const file =
       event.target
@@ -121,11 +157,11 @@ function WorkerRegistration() {
 
     if (
       !allowedTypes.includes(
-        file.type
+        file.type,
       )
     ) {
       toast.error(
-        "Only JPG, PNG or WebP images are allowed."
+        "Only JPG, PNG or WebP images are allowed.",
       );
 
       event.target.value =
@@ -139,7 +175,7 @@ function WorkerRegistration() {
       1024 * 1024
     ) {
       toast.error(
-        "Profile photo must be 1 MB or smaller."
+        "Profile photo must be 1 MB or smaller.",
       );
 
       event.target.value =
@@ -150,19 +186,19 @@ function WorkerRegistration() {
 
     if (avatarPreview) {
       URL.revokeObjectURL(
-        avatarPreview
+        avatarPreview,
       );
     }
 
     const preview =
       URL.createObjectURL(
-        file
+        file,
       );
 
     setAvatarFile(file);
 
     setAvatarPreview(
-      preview
+      preview,
     );
   };
 
@@ -174,7 +210,7 @@ function WorkerRegistration() {
     () => {
       if (avatarPreview) {
         URL.revokeObjectURL(
-          avatarPreview
+          avatarPreview,
         );
       }
 
@@ -193,17 +229,23 @@ function WorkerRegistration() {
         return user;
       }
 
+      if (!token) {
+        throw new Error(
+          "Please login again before uploading your profile photo.",
+        );
+      }
+
       const avatarData =
         new FormData();
 
       avatarData.append(
         "avatar",
-        avatarFile
+        avatarFile,
       );
 
       const response =
         await fetch(
-          "http://localhost:5000/api/profile/avatar",
+          `${API_URL}/api/profile/avatar`,
           {
             method: "POST",
 
@@ -214,16 +256,18 @@ function WorkerRegistration() {
 
             body:
               avatarData,
-          }
+          },
         );
 
       const data =
-        await response.json();
+        await parseResponse(
+          response,
+        );
 
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to upload profile photo."
+            "Failed to upload profile photo.",
         );
       }
 
@@ -231,12 +275,12 @@ function WorkerRegistration() {
         localStorage.setItem(
           "workmateUser",
           JSON.stringify(
-            data.user
-          )
+            data.user,
+          ),
         );
 
         setUser(
-          data.user
+          data.user,
         );
 
         return data.user;
@@ -258,11 +302,11 @@ function WorkerRegistration() {
         !user
       ) {
         toast.warning(
-          "Please login as a worker before creating your profile."
+          "Please login as a worker before creating your profile.",
         );
 
         navigate(
-          "/auth"
+          "/auth",
         );
 
         return;
@@ -273,7 +317,23 @@ function WorkerRegistration() {
         "worker"
       ) {
         toast.warning(
-          "Only worker accounts can create worker profiles."
+          "Only worker accounts can create worker profiles.",
+        );
+
+        return;
+      }
+
+      if (
+        !formData.name.trim() ||
+        !formData.phone.trim() ||
+        !formData.skill ||
+        !formData.experience ||
+        !formData.location.trim() ||
+        !formData.availability ||
+        !formData.salary
+      ) {
+        toast.warning(
+          "Please fill in all required profile fields.",
         );
 
         return;
@@ -285,10 +345,8 @@ function WorkerRegistration() {
         /* =====================================================
            SAVE DP FIRST
 
-           This is intentional:
-           server creates Worker profile using the User's
-           avatarFileId, so the same DP automatically copies
-           into the worker profile.
+           This remains intentional:
+           Worker profile can reuse the User avatar.
         ===================================================== */
 
         if (avatarFile) {
@@ -301,7 +359,7 @@ function WorkerRegistration() {
 
         const response =
           await fetch(
-            "http://localhost:5000/api/workers",
+            `${API_URL}/api/workers`,
             {
               method:
                 "POST",
@@ -341,7 +399,7 @@ function WorkerRegistration() {
 
                     salary:
                       Number(
-                        formData.salary
+                        formData.salary,
                       ),
 
                     description:
@@ -349,13 +407,15 @@ function WorkerRegistration() {
 
                     emoji:
                       "👨‍🍳",
-                  }
+                  },
                 ),
-            }
+            },
           );
 
         const data =
-          await response.json();
+          await parseResponse(
+            response,
+          );
 
         if (!response.ok) {
           /*
@@ -369,11 +429,11 @@ function WorkerRegistration() {
             data.worker?._id
           ) {
             toast.info(
-              "You already have a worker profile."
+              "You already have a worker profile.",
             );
 
             navigate(
-              `/workers/${data.worker._id}`
+              `/workers/${data.worker._id}`,
             );
 
             return;
@@ -381,31 +441,30 @@ function WorkerRegistration() {
 
           throw new Error(
             data.message ||
-              "Failed to register worker."
+              "Failed to register worker.",
           );
         }
 
         /* =====================================================
            REFRESH CURRENT USER FROM DATABASE
-
-           This makes sure localStorage gets the final
-           MongoDB avatarFileId / avatarUrl.
         ===================================================== */
 
         try {
           const meResponse =
             await fetch(
-              "http://localhost:5000/api/auth/me",
+              `${API_URL}/api/auth/me`,
               {
                 headers: {
                   Authorization:
                     `Bearer ${token}`,
                 },
-              }
+              },
             );
 
           const meData =
-            await meResponse.json();
+            await parseResponse(
+              meResponse,
+            );
 
           if (
             meResponse.ok &&
@@ -414,12 +473,12 @@ function WorkerRegistration() {
             localStorage.setItem(
               "workmateUser",
               JSON.stringify(
-                meData.user
-              )
+                meData.user,
+              ),
             );
 
             setUser(
-              meData.user
+              meData.user,
             );
           }
         } catch (
@@ -427,18 +486,18 @@ function WorkerRegistration() {
         ) {
           console.error(
             "Refresh user after profile creation error:",
-            refreshError
+            refreshError,
           );
         }
 
         window.dispatchEvent(
           new Event(
-            "workmate-badges-refresh"
-          )
+            "workmate-badges-refresh",
+          ),
         );
 
         toast.success(
-          "Worker profile created successfully!"
+          "Worker profile created successfully!",
         );
 
         removeAvatar();
@@ -447,25 +506,49 @@ function WorkerRegistration() {
           data.worker?._id
         ) {
           navigate(
-            `/workers/${data.worker._id}`
+            `/workers/${data.worker._id}`,
           );
         }
       } catch (error) {
         console.error(
           "Worker registration error:",
-          error
+          error,
         );
 
-        toast.error(
-          error.message ||
-            "Something went wrong while creating your profile."
-        );
+        if (
+          error instanceof
+          TypeError
+        ) {
+          toast.error(
+            "Unable to connect to WorkMate server. Please check your connection and try again.",
+          );
+        } else {
+          toast.error(
+            error.message ||
+              "Something went wrong while creating your profile.",
+          );
+        }
       } finally {
         setLoading(
-          false
+          false,
         );
       }
     };
+
+  /* =========================================================
+     AVATAR SOURCE
+  ========================================================= */
+
+  const existingAvatarSource =
+    user?.avatarUrl
+      ? user.avatarUrl.startsWith(
+          "http",
+        )
+        ? user.avatarUrl
+        : `${API_URL}${user.avatarUrl}`
+      : user?.avatarFileId
+        ? `${API_URL}/api/avatars/${user.avatarFileId}`
+        : "";
 
   /* =========================================================
      PAGE
@@ -514,20 +597,13 @@ function WorkerRegistration() {
                 }
                 alt="Profile preview"
               />
-            ) : user?.avatarUrl ||
-              user?.avatarFileId ? (
+            ) : existingAvatarSource ? (
               <img
                 src={
-                  user.avatarUrl
-                    ? user.avatarUrl.startsWith(
-                        "http"
-                      )
-                      ? user.avatarUrl
-                      : `http://localhost:5000${user.avatarUrl}`
-                    : `http://localhost:5000/api/avatars/${user.avatarFileId}`
+                  existingAvatarSource
                 }
                 alt={
-                  user.name ||
+                  user?.name ||
                   "Profile"
                 }
               />
@@ -672,8 +748,7 @@ function WorkerRegistration() {
             </option>
 
             <option value="fast-food">
-              Fast Food
-              Specialist
+              Fast Food Specialist
             </option>
 
             <option value="halwai">
@@ -773,8 +848,7 @@ function WorkerRegistration() {
             required
           >
             <option value="">
-              Select
-              availability
+              Select availability
             </option>
 
             <option value="full-time">

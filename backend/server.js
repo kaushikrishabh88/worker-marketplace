@@ -16,6 +16,7 @@ const PasswordResetToken = require("./models/PasswordResetToken");
 const { registerAvatarRoutes, publicUser } = require("./avatarRoutes");
 
 require("dotenv").config();
+
 /* =========================================================
    CONTACT EMAIL TRANSPORTER
 ========================================================= */
@@ -28,6 +29,182 @@ const contactMailTransporter = nodemailer.createTransport({
     pass: process.env.CONTACT_EMAIL_APP_PASSWORD,
   },
 });
+
+/* =========================================================
+   EMAIL VERIFICATION HELPERS
+========================================================= */
+
+const EMAIL_VERIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function getFrontendUrl() {
+  return (process.env.FRONTEND_URL || "http://localhost:5173").replace(
+    /\/$/,
+    "",
+  );
+}
+
+function createEmailVerificationToken() {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  const expiresAt = new Date(
+    Date.now() + EMAIL_VERIFICATION_EXPIRY_MS,
+  );
+
+  return {
+    rawToken,
+    tokenHash,
+    expiresAt,
+  };
+}
+
+function getVerificationRetryAfterSeconds(user) {
+  if (!user?.emailVerificationExpires) {
+    return 0;
+  }
+
+  const expiryTime = new Date(user.emailVerificationExpires).getTime();
+
+  if (Number.isNaN(expiryTime)) {
+    return 0;
+  }
+
+  const issuedAt = expiryTime - EMAIL_VERIFICATION_EXPIRY_MS;
+  const elapsed = Date.now() - issuedAt;
+
+  if (
+    elapsed < 0 ||
+    elapsed >= EMAIL_VERIFICATION_RESEND_COOLDOWN_MS
+  ) {
+    return 0;
+  }
+
+  return Math.ceil(
+    (EMAIL_VERIFICATION_RESEND_COOLDOWN_MS - elapsed) / 1000,
+  );
+}
+
+async function sendVerificationEmail({
+  user,
+  rawToken,
+  isResend = false,
+}) {
+  const verificationUrl = `${getFrontendUrl()}/verify-email?token=${rawToken}`;
+
+  const introText = isResend
+    ? "We received a request to send you a new WorkMate verification link."
+    : "Thanks for creating your WorkMate account.";
+
+  await contactMailTransporter.sendMail({
+    from: `"WorkMate" <${process.env.CONTACT_EMAIL_USER}>`,
+
+    to: user.email,
+
+    subject: isResend
+      ? "Your new WorkMate verification link"
+      : "Verify your WorkMate email",
+
+    text: `
+Welcome to WorkMate!
+
+Hi ${user.name},
+
+${introText}
+
+Please verify your email address by opening the link below:
+
+${verificationUrl}
+
+This verification link will expire in 24 hours.
+
+For your security, only the newest verification link will work.
+
+If you did not create or request access to this WorkMate account, you can ignore this email.
+
+WorkMate
+    `.trim(),
+
+    html: `
+      <div
+        style="
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 32px;
+          font-family: Arial, sans-serif;
+          color: #1f2937;
+        "
+      >
+        <h1
+          style="
+            margin-bottom: 8px;
+            color: #0f766e;
+          "
+        >
+          WorkMate
+        </h1>
+
+        <h2>Verify your email</h2>
+
+        <p>Hi ${user.name},</p>
+
+        <p>${introText}</p>
+
+        <p>
+          Please verify your email address before logging in.
+        </p>
+
+        <p style="margin: 30px 0;">
+          <a
+            href="${verificationUrl}"
+            style="
+              display: inline-block;
+              padding: 14px 24px;
+              border-radius: 8px;
+              background: #0f766e;
+              color: #ffffff;
+              text-decoration: none;
+              font-weight: 700;
+            "
+          >
+            Verify Email
+          </a>
+        </p>
+
+        <p>
+          This verification link expires in
+          <strong>24 hours</strong>.
+        </p>
+
+        <p
+          style="
+            margin-top: 16px;
+            font-size: 13px;
+            color: #6b7280;
+          "
+        >
+          For your security, only the newest verification link will work.
+        </p>
+
+        <p
+          style="
+            margin-top: 28px;
+            font-size: 13px;
+            color: #6b7280;
+          "
+        >
+          If you did not create or request access to this WorkMate
+          account, you can ignore this email.
+        </p>
+      </div>
+    `,
+  });
+}
+
 const app = express();
 
 /* =========================================================
@@ -195,6 +372,7 @@ app.post("/api/contact", async (req, res) => {
       subject: cleanSubject,
       message: cleanMessage,
     });
+
     try {
       await contactMailTransporter.sendMail({
         from: `"WorkMate Contact" <${process.env.CONTACT_EMAIL_USER}>`,
@@ -218,11 +396,12 @@ Message:
 ${cleanMessage}
 
 Message ID: ${contactMessage._id}
-    `.trim(),
+        `.trim(),
       });
     } catch (mailError) {
       console.error("Contact email notification failed:", mailError);
     }
+
     return res.status(201).json({
       success: true,
       message: "Thanks for contacting WorkMate. We will get back to you soon.",
@@ -412,14 +591,33 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid account details.",
+      });
+    }
+
+    const cleanName = name.trim();
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (!cleanName) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter your name.",
+      });
+    }
+
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
         message: "Password must be at least 6 characters.",
       });
     }
-
-    const normalizedEmail = email.toLowerCase().trim();
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -430,166 +628,108 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
+    const allowedRoles = ["worker", "employer"];
+    const userRole = allowedRoles.includes(role) ? role : "worker";
+
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
 
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User with this email already exists.",
+      if (existingUser.emailVerified) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "An account with this email already exists. Please login instead.",
+          accountExists: true,
+          email: existingUser.email,
+        });
+      }
+
+      const retryAfter = getVerificationRetryAfterSeconds(existingUser);
+
+      if (retryAfter > 0) {
+        return res.status(429).json({
+          success: false,
+          message: `A verification email was sent recently. Please wait ${retryAfter} seconds before requesting another.`,
+          verificationRequired: true,
+          resendAvailable: true,
+          retryAfter,
+          email: existingUser.email,
+          role: existingUser.role,
+        });
+      }
+
+      const previousToken = existingUser.emailVerificationToken;
+      const previousExpiry = existingUser.emailVerificationExpires;
+
+      const { rawToken, tokenHash, expiresAt } =
+        createEmailVerificationToken();
+
+      existingUser.emailVerificationToken = tokenHash;
+      existingUser.emailVerificationExpires = expiresAt;
+
+      await existingUser.save();
+
+      try {
+        await sendVerificationEmail({
+          user: existingUser,
+          rawToken,
+          isResend: true,
+        });
+      } catch (mailError) {
+        console.error("Verification resend failed:", mailError);
+
+        existingUser.emailVerificationToken = previousToken;
+        existingUser.emailVerificationExpires = previousExpiry;
+
+        await existingUser.save();
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Unable to send a new verification email right now. Please try again.",
+          verificationRequired: true,
+          resendAvailable: true,
+          email: existingUser.email,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Your account is waiting for email verification. We sent you a new verification link.",
+        verificationRequired: true,
+        verificationResent: true,
+        resendAvailable: true,
+        email: existingUser.email,
+        role: existingUser.role,
       });
     }
 
-    const allowedRoles = ["worker", "employer"];
-
-    const userRole = allowedRoles.includes(role) ? role : "worker";
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    /*
-     * Generate a random verification token.
-     *
-     * The raw token goes only in the email.
-     * MongoDB stores its SHA-256 hash.
-     */
-    const rawVerificationToken = crypto.randomBytes(32).toString("hex");
-
-    const emailVerificationToken = crypto
-      .createHash("sha256")
-      .update(rawVerificationToken)
-      .digest("hex");
-
-    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const { rawToken, tokenHash, expiresAt } =
+      createEmailVerificationToken();
 
     const user = await User.create({
-      name: name.trim(),
+      name: cleanName,
       email: normalizedEmail,
       password: hashedPassword,
       role: userRole,
 
       emailVerified: false,
 
-      emailVerificationToken,
+      emailVerificationToken: tokenHash,
 
-      emailVerificationExpires,
+      emailVerificationExpires: expiresAt,
     });
 
-    /*
-     * During local development the frontend runs
-     * on localhost:5173.
-     *
-     * Later, when WorkMate is deployed, we can put
-     * the frontend URL in .env.
-     */
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-
-    const verificationUrl = `${frontendUrl}/verify-email?token=${rawVerificationToken}`;
-
-    /*
-     * Send verification email.
-     *
-     * If sending fails, delete the newly created
-     * account so the same email can try signup again.
-     */
     try {
-      await contactMailTransporter.sendMail({
-        from: `"WorkMate" <${process.env.CONTACT_EMAIL_USER}>`,
-
-        to: user.email,
-
-        subject: "Verify your WorkMate email",
-
-        text: `
-Welcome to WorkMate!
-
-Hi ${user.name},
-
-Thanks for creating your WorkMate account.
-
-Please verify your email address by opening the link below:
-
-${verificationUrl}
-
-This verification link will expire in 24 hours.
-
-If you did not create this WorkMate account, you can ignore this email.
-
-WorkMate
-        `.trim(),
-
-        html: `
-          <div
-            style="
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 32px;
-              font-family: Arial, sans-serif;
-              color: #1f2937;
-            "
-          >
-            <h1
-              style="
-                margin-bottom: 8px;
-                color: #0f766e;
-              "
-            >
-              WorkMate
-            </h1>
-
-            <h2>
-              Verify your email
-            </h2>
-
-            <p>
-              Hi ${user.name},
-            </p>
-
-            <p>
-              Thanks for creating your
-              WorkMate account.
-            </p>
-
-            <p>
-              Please verify your email
-              address before logging in.
-            </p>
-
-            <p style="margin: 30px 0;">
-              <a
-                href="${verificationUrl}"
-                style="
-                  display: inline-block;
-                  padding: 14px 24px;
-                  border-radius: 8px;
-                  background: #0f766e;
-                  color: #ffffff;
-                  text-decoration: none;
-                  font-weight: 700;
-                "
-              >
-                Verify Email
-              </a>
-            </p>
-
-            <p>
-              This verification link expires
-              in 24 hours.
-            </p>
-
-            <p
-              style="
-                margin-top: 28px;
-                font-size: 13px;
-                color: #6b7280;
-              "
-            >
-              If you did not create this
-              WorkMate account, you can
-              ignore this email.
-            </p>
-          </div>
-        `,
+      await sendVerificationEmail({
+        user,
+        rawToken,
+        isResend: false,
       });
     } catch (mailError) {
       console.error("Verification email failed:", mailError);
@@ -605,12 +745,6 @@ WorkMate
       });
     }
 
-    /*
-     * IMPORTANT:
-     *
-     * We do NOT return a JWT here.
-     * The user must verify the email first.
-     */
     return res.status(201).json({
       success: true,
 
@@ -619,12 +753,22 @@ WorkMate
 
       verificationRequired: true,
 
+      resendAvailable: true,
+
       email: user.email,
 
       role: user.role,
     });
   } catch (error) {
     console.error("Register user error:", error);
+
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists.",
+        accountExists: true,
+      });
+    }
 
     return res.status(500).json({
       success: false,
@@ -648,12 +792,6 @@ app.get("/api/auth/verify-email", async (req, res) => {
       });
     }
 
-    /*
-     * Hash the token received from the URL.
-     *
-     * MongoDB contains only the hash,
-     * not the raw token.
-     */
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const user = await User.findOne({
@@ -701,6 +839,115 @@ app.get("/api/auth/verify-email", async (req, res) => {
 });
 
 /* =========================================================
+   RESEND EMAIL VERIFICATION
+   Public
+========================================================= */
+
+app.post("/api/auth/resend-verification", async (req, res) => {
+  const genericMessage =
+    "If this email is linked to an unverified WorkMate account, a new verification link has been sent.";
+
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (!user || user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        message: genericMessage,
+      });
+    }
+
+    const retryAfter = getVerificationRetryAfterSeconds(user);
+
+    if (retryAfter > 0) {
+      return res.status(429).json({
+        success: false,
+        message: `A verification email was sent recently. Please wait ${retryAfter} seconds before requesting another.`,
+        verificationRequired: true,
+        resendAvailable: true,
+        retryAfter,
+        email: user.email,
+      });
+    }
+
+    const previousToken = user.emailVerificationToken;
+    const previousExpiry = user.emailVerificationExpires;
+
+    const { rawToken, tokenHash, expiresAt } =
+      createEmailVerificationToken();
+
+    user.emailVerificationToken = tokenHash;
+    user.emailVerificationExpires = expiresAt;
+
+    await user.save();
+
+    try {
+      await sendVerificationEmail({
+        user,
+        rawToken,
+        isResend: true,
+      });
+    } catch (mailError) {
+      console.error("Resend verification email error:", mailError);
+
+      user.emailVerificationToken = previousToken;
+      user.emailVerificationExpires = previousExpiry;
+
+      await user.save();
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to send a new verification email right now. Please try again.",
+        verificationRequired: true,
+        resendAvailable: true,
+        email: user.email,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "A new verification email has been sent. Please check your inbox.",
+      verificationRequired: true,
+      verificationResent: true,
+      resendAvailable: true,
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to process the verification request right now. Please try again.",
+    });
+  }
+});
+
+/* =========================================================
    LOGIN USER
 ========================================================= */
 
@@ -737,13 +984,6 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    /*
-     * New accounts cannot login until
-     * their email has been verified.
-     *
-     * Existing accounts were already
-     * migrated to emailVerified=true.
-     */
     if (!user.emailVerified) {
       return res.status(403).json({
         success: false,
@@ -751,6 +991,8 @@ app.post("/api/auth/login", async (req, res) => {
         message: "Please verify your email before logging in.",
 
         verificationRequired: true,
+
+        resendAvailable: true,
 
         email: user.email,
       });
@@ -896,11 +1138,6 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       email: normalizedEmail,
     });
 
-    /*
-     * Security:
-     * Do not reveal whether this email
-     * belongs to a WorkMate account.
-     */
     if (!user) {
       return res.status(200).json({
         success: true,
@@ -908,18 +1145,10 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       });
     }
 
-    /*
-     * Remove previous reset tokens.
-     * Only newest reset email should work.
-     */
     await PasswordResetToken.deleteMany({
       user: user._id,
     });
 
-    /*
-     * Raw token goes only to the user's email.
-     * MongoDB stores only SHA-256 hash.
-     */
     const rawResetToken = crypto.randomBytes(32).toString("hex");
 
     const tokenHash = crypto
@@ -927,9 +1156,6 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       .update(rawResetToken)
       .digest("hex");
 
-    /*
-     * Reset link expires after 30 minutes.
-     */
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
     await PasswordResetToken.create({
@@ -1047,10 +1273,6 @@ WorkMate
     } catch (mailError) {
       console.error("Password reset email error:", mailError);
 
-      /*
-       * Email wasn't delivered, so remove
-       * the unusable reset token.
-       */
       await PasswordResetToken.deleteMany({
         user: user._id,
       });
@@ -1117,10 +1339,6 @@ app.post("/api/auth/reset-password", async (req, res) => {
       });
     }
 
-    /*
-     * Hash token from URL and compare it
-     * with the hash stored in MongoDB.
-     */
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
     const resetRecord = await PasswordResetToken.findOne({
@@ -1151,10 +1369,6 @@ app.post("/api/auth/reset-password", async (req, res) => {
       });
     }
 
-    /*
-     * Don't allow user to reset password
-     * to their existing password.
-     */
     const samePassword = await bcrypt.compare(newPassword, user.password);
 
     if (samePassword) {
@@ -1171,10 +1385,6 @@ app.post("/api/auth/reset-password", async (req, res) => {
 
     await user.save();
 
-    /*
-     * Password reset successful.
-     * Invalidate all reset links for this user.
-     */
     await PasswordResetToken.deleteMany({
       user: user._id,
     });
@@ -1193,6 +1403,219 @@ app.post("/api/auth/reset-password", async (req, res) => {
     });
   }
 });
+
+/* =========================================================
+   DELETE ACCOUNT
+   Worker / Employer
+   Password Confirmation Required
+========================================================= */
+
+app.delete(
+  "/api/auth/account",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const { password } = req.body;
+
+      if (
+        !password ||
+        typeof password !== "string"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please enter your password to delete your account.",
+        });
+      }
+
+      const user =
+        await User.findById(
+          req.user.userId,
+        );
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "User account not found.",
+        });
+      }
+
+      if (
+        user.role === "admin"
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Admin accounts cannot be deleted from this page.",
+        });
+      }
+
+      const passwordMatch =
+        await bcrypt.compare(
+          password,
+          user.password,
+        );
+
+      if (!passwordMatch) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Incorrect password. Account was not deleted.",
+        });
+      }
+
+      const userId =
+        user._id;
+
+      /* =====================================================
+         WORKER ACCOUNT CLEANUP
+      ===================================================== */
+
+      if (
+        user.role === "worker"
+      ) {
+        const workerProfiles =
+          await Worker.find({
+            user: userId,
+          }).select("_id");
+
+        const workerProfileIds =
+          workerProfiles.map(
+            (worker) =>
+              worker._id,
+          );
+
+        /*
+         * Remove applications created
+         * by this worker account.
+         */
+
+        await Application.deleteMany({
+          worker: userId,
+        });
+
+        /*
+         * Remove contact requests that
+         * belong to this worker.
+         */
+
+        await ContactRequest.deleteMany({
+          $or: [
+            {
+              workerUser:
+                userId,
+            },
+
+            ...(workerProfileIds.length >
+            0
+              ? [
+                  {
+                    worker: {
+                      $in:
+                        workerProfileIds,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        });
+
+        /*
+         * Finally remove worker profile.
+         */
+
+        await Worker.deleteMany({
+          user: userId,
+        });
+      }
+
+      /* =====================================================
+         EMPLOYER ACCOUNT CLEANUP
+      ===================================================== */
+
+      if (
+        user.role === "employer"
+      ) {
+        const employerJobs =
+          await Job.find({
+            employer:
+              userId,
+          }).select("_id");
+
+        const jobIds =
+          employerJobs.map(
+            (job) => job._id,
+          );
+
+        /*
+         * Remove applications belonging
+         * to jobs posted by this employer.
+         */
+
+        if (
+          jobIds.length > 0
+        ) {
+          await Application.deleteMany({
+            job: {
+              $in: jobIds,
+            },
+          });
+        }
+
+        /*
+         * Remove employer jobs.
+         */
+
+        await Job.deleteMany({
+          employer:
+            userId,
+        });
+
+        /*
+         * Remove worker-contact requests
+         * sent by this employer.
+         */
+
+        await ContactRequest.deleteMany({
+          employer:
+            userId,
+        });
+      }
+
+      /* =====================================================
+         COMMON ACCOUNT CLEANUP
+      ===================================================== */
+
+      await PasswordResetToken.deleteMany({
+        user: userId,
+      });
+
+      await User.deleteOne({
+        _id: userId,
+      });
+
+      return res.status(200).json({
+        success: true,
+
+        message:
+          "Your WorkMate account has been permanently deleted.",
+      });
+    } catch (error) {
+      console.error(
+        "Delete account error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Unable to delete your account right now. Please try again.",
+      });
+    }
+  },
+);
 
 /* =========================================================
    UPDATE EMPLOYER PROFILE
@@ -1258,12 +1681,6 @@ app.put("/api/employer/profile", authenticateUser, async (req, res) => {
 /* =========================================================
    DELETE EMPLOYER ACCOUNT
    Employer Only
-
-   Deletes:
-   - applications for employer jobs
-   - employer jobs
-   - employer contact requests
-   - employer user account
 ========================================================= */
 
 app.delete("/api/employer/account", authenticateUser, async (req, res) => {
@@ -1703,7 +2120,6 @@ app.patch(
       }
 
       const { id } = req.params;
-
       const { status } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -2745,6 +3161,7 @@ app.get("/api/applications/my", authenticateUser, async (req, res) => {
     });
   }
 });
+
 /* =========================================================
    START SERVER
 ========================================================= */

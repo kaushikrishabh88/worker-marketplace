@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import API_URL from "../api";
 
 function Auth() {
   const navigate = useNavigate();
@@ -9,76 +11,96 @@ function Auth() {
   ========================================================= */
 
   const [mode, setMode] = useState("login");
-  const [loginRole, setLoginRole] =
-    useState("employer");
+
+  const [loginRole, setLoginRole] = useState("employer");
 
   const [formData, setFormData] = useState({
     name: "",
-    email:
-      localStorage.getItem(
-        "workmateRememberEmail",
-      ) || "",
+    email: localStorage.getItem("workmateRememberEmail") || "",
     password: "",
     role: "worker",
   });
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [rememberMe, setRememberMe] =
-    useState(
-      Boolean(
-        localStorage.getItem(
-          "workmateRememberEmail",
-        ),
-      ),
-    );
+  const [rememberMe, setRememberMe] = useState(
+    Boolean(localStorage.getItem("workmateRememberEmail")),
+  );
 
-  const [
-    verificationEmail,
-    setVerificationEmail,
-  ] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+
+  const [verificationMessage, setVerificationMessage] = useState("");
+
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const [resendError, setResendError] = useState("");
+
+  const [resendSuccess, setResendSuccess] = useState("");
+
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   /* =========================================================
      FORGOT PASSWORD STATE
   ========================================================= */
 
-  const [
-    showForgotPassword,
-    setShowForgotPassword,
-  ] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const [forgotEmail, setForgotEmail] =
-    useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
 
-  const [
-    forgotLoading,
-    setForgotLoading,
-  ] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
-  const [
-    forgotError,
-    setForgotError,
-  ] = useState("");
+  const [forgotError, setForgotError] = useState("");
 
-  const [
-    forgotSuccess,
-    setForgotSuccess,
-  ] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState("");
+
+  /* =========================================================
+     SAFE RESPONSE PARSER
+  ========================================================= */
+
+  const parseResponse = async (response) => {
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    const text = await response.text();
+
+    throw new Error(
+      text
+        ? "Server returned an unexpected response. Please try again."
+        : "Unable to connect to the server. Please try again.",
+    );
+  };
+
+  /* =========================================================
+     VERIFICATION RESEND COOLDOWN
+  ========================================================= */
+
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((previous) => (previous > 1 ? previous - 1 : 0));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [resendCooldown]);
 
   /* =========================================================
      INPUT CHANGE
   ========================================================= */
 
   const handleChange = (event) => {
-    const { name, value } =
-      event.target;
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -90,110 +112,162 @@ function Auth() {
      GET CURRENT USER
   ========================================================= */
 
-  const fetchCurrentUser = async (
-    token,
-  ) => {
-    const response = await fetch(
-      "http://localhost:5000/api/auth/me",
-      {
+  const fetchCurrentUser = async (token) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/me`, {
         headers: {
-          Authorization:
-            `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-      },
-    );
+      });
 
-    const data =
-      await response.json();
+      const data = await parseResponse(response);
 
-    if (
-      response.ok &&
-      data.user
-    ) {
-      return data.user;
+      if (response.ok && data.user) {
+        return data.user;
+      }
+
+      return null;
+    } catch (fetchError) {
+      console.error("Fetch current user error:", fetchError);
+
+      return null;
     }
-
-    return null;
   };
 
   /* =========================================================
      FORGOT PASSWORD
   ========================================================= */
 
-  const handleForgotPassword =
-    async (event) => {
-      event.preventDefault();
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
 
-      setForgotError("");
-      setForgotSuccess("");
+    setForgotError("");
+    setForgotSuccess("");
 
-      const cleanEmail =
-        forgotEmail.trim();
+    const cleanEmail = forgotEmail.trim();
 
-      if (!cleanEmail) {
-        setForgotError(
-          "Please enter your email address.",
-        );
+    if (!cleanEmail) {
+      setForgotError("Please enter your email address.");
 
-        return;
+      return;
+    }
+
+    try {
+      setForgotLoading(true);
+
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          email: cleanEmail,
+        }),
+      });
+
+      const data = await parseResponse(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to send reset link.");
       }
 
-      try {
-        setForgotLoading(true);
+      setForgotSuccess(
+        data.message ||
+          "If an account exists for this email, a password reset link has been sent.",
+      );
+    } catch (forgotPasswordError) {
+      console.error("Forgot password error:", forgotPasswordError);
 
-        const response =
-          await fetch(
-            "http://localhost:5000/api/auth/forgot-password",
-            {
-              method: "POST",
+      setForgotError(
+        forgotPasswordError.message || "Unable to send reset link.",
+      );
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+  /* =========================================================
+     RESEND VERIFICATION EMAIL
+  ========================================================= */
 
-              body: JSON.stringify({
-                email: cleanEmail,
-              }),
-            },
-          );
+  const handleResendVerification = async () => {
+    const cleanEmail = verificationEmail.trim();
 
-        const data =
-          await response.json();
+    if (!cleanEmail) {
+      setResendError("Email address is required.");
 
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "Unable to send reset link.",
-          );
+      return;
+    }
+
+    if (resendLoading || resendCooldown > 0) {
+      return;
+    }
+
+    setResendError("");
+    setResendSuccess("");
+
+    try {
+      setResendLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/api/auth/resend-verification`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            email: cleanEmail,
+          }),
+        },
+      );
+
+      const data = await parseResponse(response);
+
+      if (!response.ok) {
+        if (Number.isFinite(Number(data.retryAfter))) {
+          setResendCooldown(Math.max(0, Number(data.retryAfter)));
         }
 
-        setForgotSuccess(
-          data.message ||
-            "If an account exists for this email, a password reset link has been sent.",
+        throw new Error(
+          data.message || "Unable to resend verification email.",
         );
-      } catch (error) {
-        console.error(
-          "Forgot password error:",
-          error,
-        );
-
-        setForgotError(
-          error.message ||
-            "Unable to send reset link.",
-        );
-      } finally {
-        setForgotLoading(false);
       }
-    };
+
+      const successMessage =
+        data.message ||
+        "A new verification email has been sent. Please check your inbox.";
+
+      setResendSuccess(successMessage);
+
+      setVerificationMessage(successMessage);
+
+      if (Number.isFinite(Number(data.retryAfter))) {
+        setResendCooldown(Math.max(0, Number(data.retryAfter)));
+      } else {
+        setResendCooldown(60);
+      }
+    } catch (resendVerificationError) {
+      console.error("Resend verification error:", resendVerificationError);
+
+      setResendError(
+        resendVerificationError.message ||
+          "Unable to resend verification email.",
+      );
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   /* =========================================================
      LOGIN / REGISTER
   ========================================================= */
 
-  const handleSubmit = async (
-    event,
-  ) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setLoading(true);
@@ -202,54 +276,63 @@ function Auth() {
     try {
       const endpoint =
         mode === "login"
-          ? "http://localhost:5000/api/auth/login"
-          : "http://localhost:5000/api/auth/register";
+          ? `${API_URL}/api/auth/login`
+          : `${API_URL}/api/auth/register`;
 
       const requestBody =
         mode === "login"
           ? {
-              email:
-                formData.email,
-              password:
-                formData.password,
+              email: formData.email.trim(),
+              password: formData.password,
             }
           : {
-              name:
-                formData.name,
-              email:
-                formData.email,
-              password:
-                formData.password,
-              role:
-                formData.role,
+              name: formData.name.trim(),
+              email: formData.email.trim(),
+              password: formData.password,
+              role: formData.role,
             };
 
-      const response =
-        await fetch(
-          endpoint,
-          {
-            method: "POST",
+      const response = await fetch(endpoint, {
+        method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-            body: JSON.stringify(
-              requestBody,
-            ),
-          },
-        );
+        body: JSON.stringify(requestBody),
+      });
 
-      const data =
-        await response.json();
+      const data = await parseResponse(response);
 
       if (!response.ok) {
+        if (data.verificationRequired) {
+          const email = data.email || formData.email.trim();
+
+          setVerificationEmail(email);
+
+          setVerificationMessage(
+            data.message || "Please verify your email before logging in.",
+          );
+
+          setResendError("");
+          setResendSuccess("");
+
+          if (Number.isFinite(Number(data.retryAfter))) {
+            setResendCooldown(Math.max(0, Number(data.retryAfter)));
+          }
+
+          setFormData((previous) => ({
+            ...previous,
+            email,
+            password: "",
+          }));
+
+          return;
+        }
+
         throw new Error(
           data.message ||
-            (mode === "login"
-              ? "Login failed."
-              : "Registration failed."),
+            (mode === "login" ? "Login failed." : "Registration failed."),
         );
       }
 
@@ -259,17 +342,24 @@ function Auth() {
       ===================================================== */
 
       if (mode === "register") {
-        setVerificationEmail(
-          data.email ||
-            formData.email.trim(),
+        setVerificationEmail(data.email || formData.email.trim());
+
+        setVerificationMessage(
+          data.message ||
+            "We sent a verification link to your email address.",
         );
 
-        setFormData(
-          (previous) => ({
-            ...previous,
-            password: "",
-          }),
-        );
+        setResendError("");
+        setResendSuccess("");
+
+        if (Number.isFinite(Number(data.retryAfter))) {
+          setResendCooldown(Math.max(0, Number(data.retryAfter)));
+        }
+
+        setFormData((previous) => ({
+          ...previous,
+          password: "",
+        }));
 
         return;
       }
@@ -278,52 +368,34 @@ function Auth() {
          LOGIN ROLE CHECK
       ===================================================== */
 
-      if (
-        data.user?.role !==
-        loginRole
-      ) {
+      if (data.user?.role !== loginRole) {
         const selectedRole =
-          loginRole === "employer"
-            ? "Employer"
-            : "Worker";
+          loginRole === "employer" ? "Employer" : "Worker";
 
         throw new Error(
           `This account is not registered as an ${selectedRole}. Please select the correct login type.`,
         );
       }
 
-      let finalUser =
-        data.user;
+      let finalUser = data.user;
 
       /* =====================================================
          LOGIN REFRESH
       ===================================================== */
 
-      const freshUser =
-        await fetchCurrentUser(
-          data.token,
-        );
+      const freshUser = await fetchCurrentUser(data.token);
 
       if (freshUser) {
-        finalUser =
-          freshUser;
+        finalUser = freshUser;
       }
 
       /* =====================================================
          SAVE LOGIN
       ===================================================== */
 
-      localStorage.setItem(
-        "workmateToken",
-        data.token,
-      );
+      localStorage.setItem("workmateToken", data.token);
 
-      localStorage.setItem(
-        "workmateUser",
-        JSON.stringify(
-          finalUser,
-        ),
-      );
+      localStorage.setItem("workmateUser", JSON.stringify(finalUser));
 
       /* =====================================================
          REMEMBER EMAIL
@@ -335,23 +407,25 @@ function Auth() {
           formData.email.trim(),
         );
       } else {
-        localStorage.removeItem(
-          "workmateRememberEmail",
-        );
+        localStorage.removeItem("workmateRememberEmail");
       }
 
       navigate("/");
-      window.location.reload();
-    } catch (error) {
-      console.error(
-        "Authentication error:",
-        error,
-      );
 
-      setError(
-        error.message ||
-          "Something went wrong. Please try again.",
-      );
+      window.location.reload();
+    } catch (authenticationError) {
+      console.error("Authentication error:", authenticationError);
+
+      if (authenticationError instanceof TypeError) {
+        setError(
+          "Unable to connect to WorkMate server. Please check your connection and try again.",
+        );
+      } else {
+        setError(
+          authenticationError.message ||
+            "Something went wrong. Please try again.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -361,16 +435,24 @@ function Auth() {
      CHANGE LOGIN / SIGNUP MODE
   ========================================================= */
 
-  const changeMode = (
-    newMode,
-  ) => {
+  const changeMode = (newMode) => {
     setMode(newMode);
 
     setError("");
+
     setVerificationEmail("");
+
+    setVerificationMessage("");
+
+    setResendError("");
+    setResendSuccess("");
+    setResendCooldown(0);
+    setResendLoading(false);
+
     setShowPassword(false);
 
     setShowForgotPassword(false);
+
     setForgotEmail("");
     setForgotError("");
     setForgotSuccess("");
@@ -380,9 +462,7 @@ function Auth() {
 
       email:
         newMode === "login"
-          ? localStorage.getItem(
-              "workmateRememberEmail",
-            ) || ""
+          ? localStorage.getItem("workmateRememberEmail") || ""
           : "",
 
       password: "",
@@ -394,19 +474,14 @@ function Auth() {
      OPEN FORGOT PASSWORD
   ========================================================= */
 
-  const openForgotPassword =
-    () => {
-      setForgotEmail(
-        formData.email || "",
-      );
+  const openForgotPassword = () => {
+    setForgotEmail(formData.email || "");
 
-      setForgotError("");
-      setForgotSuccess("");
+    setForgotError("");
+    setForgotSuccess("");
 
-      setShowForgotPassword(
-        true,
-      );
-    };
+    setShowForgotPassword(true);
+  };
 
   /* =========================================================
      BACK TO LOGIN
@@ -414,20 +489,19 @@ function Auth() {
 
   const backToLogin = () => {
     setShowForgotPassword(false);
+
     setForgotError("");
     setForgotSuccess("");
 
     setMode("login");
 
-    setFormData(
-      (previous) => ({
-        ...previous,
-        email:
-          forgotEmail ||
-          previous.email,
-        password: "",
-      }),
-    );
+    setFormData((previous) => ({
+      ...previous,
+
+      email: forgotEmail || previous.email,
+
+      password: "",
+    }));
   };
 
   /* =========================================================
@@ -444,45 +518,29 @@ function Auth() {
         <aside className="auth-showcase">
           <div className="auth-showcase-brand">
             <div className="auth-showcase-logo">
-              <span className="auth-showcase-logo-mark">
-                ◆
-              </span>
+              <span className="auth-showcase-logo-mark">◆</span>
 
               <div>
                 <strong>
-                  Work
-                  <span>
-                    Mate
-                  </span>
+                  Work<span>Mate</span>
                 </strong>
 
-                <small>
-                  Local skills. Real
-                  opportunities.
-                </small>
+                <small>Local skills. Real opportunities.</small>
               </div>
             </div>
 
             <div className="auth-showcase-copy">
-              <span className="auth-showcase-kicker">
-                WORK • HIRE • GROW
-              </span>
+              <span className="auth-showcase-kicker">WORK • HIRE • GROW</span>
 
               <h1>
                 Find Work.
                 <br />
-
-                <em>
-                  Hire Right.
-                </em>
+                <em>Hire Right.</em>
               </h1>
 
               <p>
-                WorkMate connects
-                skilled food-service
-                workers with trusted
-                employers and better
-                local opportunities.
+                WorkMate connects skilled food-service workers with trusted
+                employers and better local opportunities.
               </p>
             </div>
 
@@ -493,15 +551,10 @@ function Auth() {
                 </div>
 
                 <div>
-                  <strong>
-                    For Employers
-                  </strong>
+                  <strong>For Employers</strong>
 
                   <p>
-                    Find reliable
-                    kitchen and food
-                    service workers
-                    quickly.
+                    Find reliable kitchen and food service workers quickly.
                   </p>
                 </div>
               </div>
@@ -512,15 +565,11 @@ function Auth() {
                 </div>
 
                 <div>
-                  <strong>
-                    For Skilled Workers
-                  </strong>
+                  <strong>For Skilled Workers</strong>
 
                   <p>
-                    Find Chef, Baker,
-                    Fast Food and
-                    Halwai opportunities
-                    near you.
+                    Find Chef, Baker, Fast Food and Halwai opportunities near
+                    you.
                   </p>
                 </div>
               </div>
@@ -531,14 +580,10 @@ function Auth() {
                 </div>
 
                 <div>
-                  <strong>
-                    Safe & Trusted
-                  </strong>
+                  <strong>Safe & Trusted</strong>
 
                   <p>
-                    Clear profiles,
-                    direct requests
-                    and reliable local
+                    Clear profiles, direct requests and reliable local
                     connections.
                   </p>
                 </div>
@@ -550,10 +595,7 @@ function Auth() {
               SKILL SCENE
           ================================================= */}
 
-          <div
-            className="auth-worker-scene"
-            aria-hidden="true"
-          >
+          <div className="auth-worker-scene" aria-hidden="true">
             <div className="auth-scene-sun"></div>
 
             <div className="auth-scene-city">
@@ -566,43 +608,27 @@ function Auth() {
 
             <div className="auth-scene-workers">
               <div>
-                <span>
-                  👨‍🍳
-                </span>
+                <span>👨‍🍳</span>
 
-                <small>
-                  Chef & Cook
-                </small>
+                <small>Chef & Cook</small>
               </div>
 
               <div>
-                <span>
-                  🍰
-                </span>
+                <span>🍰</span>
 
-                <small>
-                  Baker
-                </small>
+                <small>Baker</small>
               </div>
 
               <div>
-                <span>
-                  🍕
-                </span>
+                <span>🍕</span>
 
-                <small>
-                  Fast Food
-                </small>
+                <small>Fast Food</small>
               </div>
 
               <div>
-                <span>
-                  🍬
-                </span>
+                <span>🍬</span>
 
-                <small>
-                  Halwai
-                </small>
+                <small>Halwai</small>
               </div>
             </div>
           </div>
@@ -616,17 +642,13 @@ function Auth() {
           <button
             className="auth-back"
             type="button"
-            onClick={() =>
-              navigate("/")
-            }
+            onClick={() => navigate("/")}
           >
             ← Back to Home
           </button>
 
           <div className="auth-logo">
-            <span>
-              Work
-            </span>
+            <span>Work</span>
             Mate
           </div>
 
@@ -634,42 +656,25 @@ function Auth() {
               LOGIN / SIGNUP TABS
           ================================================= */}
 
-          {!showForgotPassword &&
-            !verificationEmail && (
-              <div className="auth-tabs">
-                <button
-                  type="button"
-                  className={
-                    mode === "login"
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    changeMode(
-                      "login",
-                    )
-                  }
-                >
-                  Login
-                </button>
+          {!showForgotPassword && !verificationEmail && (
+            <div className="auth-tabs">
+              <button
+                type="button"
+                className={mode === "login" ? "active" : ""}
+                onClick={() => changeMode("login")}
+              >
+                Login
+              </button>
 
-                <button
-                  type="button"
-                  className={
-                    mode === "register"
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    changeMode(
-                      "register",
-                    )
-                  }
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
+              <button
+                type="button"
+                className={mode === "register" ? "active" : ""}
+                onClick={() => changeMode("register")}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
           {/* =================================================
               EMPLOYER / WORKER LOGIN SELECTOR
@@ -685,16 +690,9 @@ function Auth() {
               >
                 <button
                   type="button"
-                  className={
-                    loginRole ===
-                    "employer"
-                      ? "active"
-                      : ""
-                  }
+                  className={loginRole === "employer" ? "active" : ""}
                   onClick={() => {
-                    setLoginRole(
-                      "employer",
-                    );
+                    setLoginRole("employer");
 
                     setError("");
                   }}
@@ -704,16 +702,9 @@ function Auth() {
 
                 <button
                   type="button"
-                  className={
-                    loginRole ===
-                    "worker"
-                      ? "active"
-                      : ""
-                  }
+                  className={loginRole === "worker" ? "active" : ""}
                   onClick={() => {
-                    setLoginRole(
-                      "worker",
-                    );
+                    setLoginRole("worker");
 
                     setError("");
                   }}
@@ -733,8 +724,7 @@ function Auth() {
                 {showForgotPassword
                   ? "Reset your password"
                   : mode === "login"
-                    ? loginRole ===
-                      "employer"
+                    ? loginRole === "employer"
                       ? "Employer Login 💼"
                       : "Worker Login 👨‍🍳"
                     : "Create your account"}
@@ -744,8 +734,7 @@ function Auth() {
                 {showForgotPassword
                   ? "Enter the email linked to your WorkMate account and we'll send you a secure reset link."
                   : mode === "login"
-                    ? loginRole ===
-                      "employer"
+                    ? loginRole === "employer"
                       ? "Login to hire and manage skilled workers on WorkMate."
                       : "Login to find food-service jobs and manage your work on WorkMate."
                     : "Join WorkMate and connect with local opportunities."}
@@ -759,40 +748,23 @@ function Auth() {
 
           {showForgotPassword ? (
             <div className="forgot-password-panel">
-              <div className="forgot-password-icon">
-                🔐
-              </div>
+              <div className="forgot-password-icon">🔐</div>
 
-              <span className="forgot-password-kicker">
-                ACCOUNT RECOVERY
-              </span>
+              <span className="forgot-password-kicker">ACCOUNT RECOVERY</span>
 
               {!forgotSuccess ? (
                 <form
                   className="auth-form forgot-password-form"
-                  onSubmit={
-                    handleForgotPassword
-                  }
+                  onSubmit={handleForgotPassword}
                 >
                   <div className="auth-field">
-                    <label htmlFor="forgot-email">
-                      Email Address
-                    </label>
+                    <label htmlFor="forgot-email">Email Address</label>
 
                     <input
                       id="forgot-email"
                       type="email"
-                      value={
-                        forgotEmail
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setForgotEmail(
-                          event.target
-                            .value,
-                        )
-                      }
+                      value={forgotEmail}
+                      onChange={(event) => setForgotEmail(event.target.value)}
                       placeholder="you@example.com"
                       autoComplete="email"
                       autoFocus
@@ -801,18 +773,13 @@ function Auth() {
                   </div>
 
                   {forgotError && (
-                    <p className="auth-error">
-                      ⚠️{" "}
-                      {forgotError}
-                    </p>
+                    <p className="auth-error">⚠️ {forgotError}</p>
                   )}
 
                   <button
                     className="auth-submit"
                     type="submit"
-                    disabled={
-                      forgotLoading
-                    }
+                    disabled={forgotLoading}
                   >
                     {forgotLoading
                       ? "Sending reset link..."
@@ -822,47 +789,31 @@ function Auth() {
                   <button
                     type="button"
                     className="forgot-password-back"
-                    onClick={
-                      backToLogin
-                    }
-                    disabled={
-                      forgotLoading
-                    }
+                    onClick={backToLogin}
+                    disabled={forgotLoading}
                   >
                     ← Back to Login
                   </button>
                 </form>
               ) : (
                 <div className="forgot-password-success">
-                  <div className="forgot-password-success-icon">
-                    ✉️
-                  </div>
+                  <div className="forgot-password-success-icon">✉️</div>
 
-                  <h2>
-                    Check your inbox
-                  </h2>
+                  <h2>Check your inbox</h2>
 
-                  <p>
-                    {forgotSuccess}
-                  </p>
+                  <p>{forgotSuccess}</p>
 
-                  <strong>
-                    {forgotEmail}
-                  </strong>
+                  <strong>{forgotEmail}</strong>
 
                   <div className="forgot-password-note">
-                    The reset link
-                    expires in 30
-                    minutes and can
-                    only be used once.
+                    The reset link expires in 30 minutes and can only be used
+                    once.
                   </div>
 
                   <button
                     type="button"
                     className="auth-submit"
-                    onClick={
-                      backToLogin
-                    }
+                    onClick={backToLogin}
                   >
                     Back to Login →
                   </button>
@@ -871,21 +822,17 @@ function Auth() {
             </div>
           ) : verificationEmail ? (
             <div className="auth-verification-success">
-              <div className="auth-verification-success-icon">
-                ✉️
-              </div>
+              <div className="auth-verification-success-icon">✉️</div>
 
               <span className="auth-verification-kicker">
-                EMAIL SENT
+                EMAIL VERIFICATION
               </span>
 
-              <h2>
-                Check your inbox
-              </h2>
+              <h2>Check your inbox</h2>
 
               <p>
-                We sent a
-                verification link to
+                {verificationMessage ||
+                  "We sent a verification link to your email address."}
               </p>
 
               <strong className="auth-verification-email">
@@ -893,34 +840,51 @@ function Auth() {
               </strong>
 
               <p>
-                Open the email and
-                click
-                <strong>
-                  {" "}
-                  Verify Email
-                </strong>
-                . After verification,
-                come back here and
-                login to WorkMate.
+                Open the email and click <strong>Verify Email</strong>. After
+                verification, come back here and login to WorkMate.
               </p>
 
               <div className="auth-verification-note">
-                🔒 Your account
-                cannot be used until
-                the email address has
-                been verified.
+                🔒 Your account cannot be used until the email address has been
+                verified.
               </div>
+
+              {resendSuccess && (
+                <p className="auth-success">✅ {resendSuccess}</p>
+              )}
+
+              {resendError && (
+                <p className="auth-error">⚠️ {resendError}</p>
+              )}
+
+              <button
+                type="button"
+                className="forgot-password-back"
+                onClick={handleResendVerification}
+                disabled={resendLoading || resendCooldown > 0}
+              >
+                {resendLoading
+                  ? "Sending verification email..."
+                  : resendCooldown > 0
+                    ? `Resend available in ${resendCooldown}s`
+                    : "Resend Verification Email"}
+              </button>
 
               <button
                 type="button"
                 className="auth-submit"
                 onClick={() => {
-                  const email =
-                    verificationEmail;
+                  const email = verificationEmail;
 
-                  setVerificationEmail(
-                    "",
-                  );
+                  setVerificationEmail("");
+
+                  setVerificationMessage("");
+
+                  setResendError("");
+
+                  setResendSuccess("");
+
+                  setResendCooldown(0);
 
                   setMode("login");
 
@@ -932,40 +896,27 @@ function Auth() {
                   });
 
                   setError("");
-                  setShowPassword(
-                    false,
-                  );
+
+                  setShowPassword(false);
                 }}
               >
                 Go to Login →
               </button>
             </div>
           ) : (
-            <form
-              className="auth-form"
-              onSubmit={
-                handleSubmit
-              }
-            >
+            <form className="auth-form" onSubmit={handleSubmit}>
               {/* NAME */}
 
-              {mode ===
-                "register" && (
+              {mode === "register" && (
                 <div className="auth-field">
-                  <label htmlFor="auth-name">
-                    Full Name
-                  </label>
+                  <label htmlFor="auth-name">Full Name</label>
 
                   <input
                     id="auth-name"
                     type="text"
                     name="name"
-                    value={
-                      formData.name
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={formData.name}
+                    onChange={handleChange}
                     placeholder="Enter your full name"
                     autoComplete="name"
                     required
@@ -976,20 +927,14 @@ function Auth() {
               {/* EMAIL */}
 
               <div className="auth-field">
-                <label htmlFor="auth-email">
-                  Email Address
-                </label>
+                <label htmlFor="auth-email">Email Address</label>
 
                 <input
                   id="auth-email"
                   type="email"
                   name="email"
-                  value={
-                    formData.email
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.email}
+                  onChange={handleChange}
                   placeholder="you@example.com"
                   autoComplete="email"
                   required
@@ -999,32 +944,19 @@ function Auth() {
               {/* PASSWORD */}
 
               <div className="auth-field">
-                <label htmlFor="auth-password">
-                  Password
-                </label>
+                <label htmlFor="auth-password">Password</label>
 
                 <div className="auth-password-wrap">
                   <input
                     id="auth-password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     name="password"
-                    value={
-                      formData.password
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={formData.password}
+                    onChange={handleChange}
                     placeholder="Minimum 6 characters"
                     minLength="6"
                     autoComplete={
-                      mode ===
-                      "login"
-                        ? "current-password"
-                        : "new-password"
+                      mode === "login" ? "current-password" : "new-password"
                     }
                     required
                   />
@@ -1033,22 +965,11 @@ function Auth() {
                     className="auth-password-toggle"
                     type="button"
                     onClick={() =>
-                      setShowPassword(
-                        (
-                          previous,
-                        ) =>
-                          !previous,
-                      )
+                      setShowPassword((previous) => !previous)
                     }
-                    aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
-                    }
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword
-                      ? "🙈"
-                      : "👁️"}
+                    {showPassword ? "🙈" : "👁️"}
                   </button>
                 </div>
               </div>
@@ -1060,30 +981,17 @@ function Auth() {
                   <label className="auth-remember">
                     <input
                       type="checkbox"
-                      checked={
-                        rememberMe
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setRememberMe(
-                          event.target
-                            .checked,
-                        )
-                      }
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
                     />
 
-                    <span>
-                      Remember my email
-                    </span>
+                    <span>Remember my email</span>
                   </label>
 
                   <button
                     type="button"
                     className="auth-forgot-link"
-                    onClick={
-                      openForgotPassword
-                    }
+                    onClick={openForgotPassword}
                   >
                     Forgot Password?
                   </button>
@@ -1092,58 +1000,39 @@ function Auth() {
 
               {/* REGISTER ROLE */}
 
-              {mode ===
-                "register" && (
+              {mode === "register" && (
                 <div className="auth-field">
-                  <label htmlFor="auth-role">
-                    I want to join as
-                  </label>
+                  <label htmlFor="auth-role">I want to join as</label>
 
                   <select
                     id="auth-role"
                     name="role"
-                    value={
-                      formData.role
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={formData.role}
+                    onChange={handleChange}
                   >
-                    <option value="worker">
-                      👨‍🍳 Worker
-                    </option>
+                    <option value="worker">👨‍🍳 Worker</option>
 
-                    <option value="employer">
-                      💼 Employer
-                    </option>
+                    <option value="employer">💼 Employer</option>
                   </select>
                 </div>
               )}
 
               {/* ERROR */}
 
-              {error && (
-                <p className="auth-error">
-                  ⚠️ {error}
-                </p>
-              )}
+              {error && <p className="auth-error">⚠️ {error}</p>}
 
               {/* SUBMIT */}
 
               <button
                 className="auth-submit"
                 type="submit"
-                disabled={
-                  loading
-                }
+                disabled={loading}
               >
                 {loading
-                  ? mode ===
-                    "login"
+                  ? mode === "login"
                     ? "Logging in..."
                     : "Creating account..."
-                  : mode ===
-                    "login"
+                  : mode === "login"
                     ? "Login →"
                     : "Create Account →"}
               </button>
@@ -1154,35 +1043,25 @@ function Auth() {
               MODE SWITCH
           ================================================= */}
 
-          {!verificationEmail &&
-            !showForgotPassword && (
-              <p className="auth-switch">
-                {mode === "login"
-                  ? "Don't have an account?"
-                  : "Already have an account?"}
+          {!verificationEmail && !showForgotPassword && (
+            <p className="auth-switch">
+              {mode === "login"
+                ? "Don't have an account?"
+                : "Already have an account?"}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    changeMode(
-                      mode ===
-                        "login"
-                        ? "register"
-                        : "login",
-                    )
-                  }
-                >
-                  {mode === "login"
-                    ? "Sign Up"
-                    : "Login"}
-                </button>
-              </p>
-            )}
+              <button
+                type="button"
+                onClick={() =>
+                  changeMode(mode === "login" ? "register" : "login")
+                }
+              >
+                {mode === "login" ? "Sign Up" : "Login"}
+              </button>
+            </p>
+          )}
 
           <div className="auth-footer">
-            🔒 Your account
-            information is securely
-            handled by WorkMate.
+            🔒 Your account information is securely handled by WorkMate.
           </div>
         </div>
       </div>

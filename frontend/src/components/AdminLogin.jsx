@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./useToast";
-
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function AdminLogin() {
   const navigate = useNavigate();

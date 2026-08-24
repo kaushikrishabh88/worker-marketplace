@@ -5,11 +5,12 @@ import {
 } from "react";
 
 import ProfileAvatar from "./ProfileAvatar";
+import API_URL from "../api";
 
 function MyApplications() {
   const token =
     localStorage.getItem(
-      "workmateToken"
+      "workmateToken",
     );
 
   const [applications, setApplications] =
@@ -22,7 +23,7 @@ function MyApplications() {
     useState(
       token
         ? ""
-        : "Please login as a worker to view applications."
+        : "Please login as a worker to view applications.",
     );
 
   /* =========================================================
@@ -42,38 +43,44 @@ function MyApplications() {
 
           const response =
             await fetch(
-              "http://localhost:5000/api/applications/my",
+              `${API_URL}/api/applications/my`,
               {
                 headers: {
                   Authorization:
                     `Bearer ${token}`,
                 },
-              }
+              },
             );
 
-          const data =
-            await response.json();
+          let data = {};
+
+          try {
+            data =
+              await response.json();
+          } catch {
+            data = {};
+          }
 
           if (!response.ok) {
             throw new Error(
               data.message ||
-                "Failed to load applications."
+                "Failed to load applications.",
             );
           }
 
           setApplications(
             data.applications ||
-              []
+              [],
           );
         } catch (error) {
           console.error(
             "Fetch my applications error:",
-            error
+            error,
           );
 
           setError(
             error.message ||
-              "Unable to load your applications."
+              "Unable to load your applications.",
           );
         } finally {
           setLoading(false);
@@ -93,10 +100,10 @@ function MyApplications() {
         applications.filter(
           (application) =>
             Boolean(
-              application?.job?._id
-            )
+              application?.job?._id,
+            ),
         ),
-      [applications]
+      [applications],
     );
 
   /* =========================================================
@@ -280,9 +287,9 @@ function MyApplications() {
                         ₹
                         {Number(
                           job.salary ||
-                            0
+                            0,
                         ).toLocaleString(
-                          "en-IN"
+                          "en-IN",
                         )}
                       </strong>
                     </div>
@@ -295,9 +302,9 @@ function MyApplications() {
                   <div className="my-application-date">
                     Applied{" "}
                     {new Date(
-                      application.createdAt
+                      application.createdAt,
                     ).toLocaleString(
-                      "en-IN"
+                      "en-IN",
                     )}
                   </div>
 
@@ -312,7 +319,7 @@ function MyApplications() {
                   </div>
                 </article>
               );
-            }
+            },
           )}
         </div>
       )}

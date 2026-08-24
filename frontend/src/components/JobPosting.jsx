@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./useToast";
+import API_URL from "../api";
 
 function JobPosting() {
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ function JobPosting() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/jobs",
+        `${API_URL}/api/jobs`,
         {
           method: "POST",
 

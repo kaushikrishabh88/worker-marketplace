@@ -4,13 +4,15 @@ import {
   useState,
 } from "react";
 
+import API_URL from "../api";
+
 function NavBadges({ user, type }) {
   const [count, setCount] =
     useState(0);
 
   const token =
     localStorage.getItem(
-      "workmateToken"
+      "workmateToken",
     );
 
   /* =========================================================
@@ -35,13 +37,13 @@ function NavBadges({ user, type }) {
           type === "applications"
         ) {
           url =
-            "http://localhost:5000/api/applications/my";
+            `${API_URL}/api/applications/my`;
         } else if (
           user.role === "worker" &&
           type === "requests"
         ) {
           url =
-            "http://localhost:5000/api/contact-requests/my";
+            `${API_URL}/api/contact-requests/my`;
         }
 
         /* =====================================================
@@ -53,33 +55,46 @@ function NavBadges({ user, type }) {
           type === "jobs"
         ) {
           url =
-            "http://localhost:5000/api/jobs/my";
+            `${API_URL}/api/jobs/my`;
         } else if (
           user.role === "employer" &&
           type === "requests"
         ) {
           url =
-            "http://localhost:5000/api/contact-requests/sent";
+            `${API_URL}/api/contact-requests/sent`;
         }
 
         if (!url) {
           return 0;
         }
 
-        const response = await fetch(
-          url,
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
+        const response =
+          await fetch(
+            url,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
             },
-          }
-        );
+          );
 
-        const data =
-          await response.json();
+        let data = {};
+
+        try {
+          data =
+            await response.json();
+        } catch {
+          data = {};
+        }
 
         if (!response.ok) {
+          console.error(
+            "Navbar badge request failed:",
+            data.message ||
+              response.status,
+          );
+
           return 0;
         }
 
@@ -96,7 +111,7 @@ function NavBadges({ user, type }) {
           ).filter(
             (job) =>
               (job.status ||
-                "open") === "open"
+                "open") === "open",
           ).length;
         }
 
@@ -114,7 +129,7 @@ function NavBadges({ user, type }) {
             (application) =>
               (application.status ||
                 "pending") ===
-              "pending"
+              "pending",
           ).length;
         }
 
@@ -128,17 +143,21 @@ function NavBadges({ user, type }) {
           (request) =>
             (request.status ||
               "pending") ===
-            "pending"
+            "pending",
         ).length;
       } catch (error) {
         console.error(
           "Navbar badge error:",
-          error
+          error,
         );
 
         return 0;
       }
-    }, [user, token, type]);
+    }, [
+      user,
+      token,
+      type,
+    ]);
 
   /* =========================================================
      INITIAL FETCH
@@ -147,23 +166,30 @@ function NavBadges({ user, type }) {
   useEffect(() => {
     let active = true;
 
-    const loadCount = async () => {
-      const newCount =
-        await fetchCount();
+    const loadCount =
+      async () => {
+        const newCount =
+          await fetchCount();
 
-      if (active) {
-        setCount(newCount);
-      }
-    };
+        if (active) {
+          setCount(
+            newCount,
+          );
+        }
+      };
 
-    const timer = setTimeout(
-      loadCount,
-      0
-    );
+    const timer =
+      setTimeout(
+        loadCount,
+        0,
+      );
 
     return () => {
       active = false;
-      clearTimeout(timer);
+
+      clearTimeout(
+        timer,
+      );
     };
   }, [fetchCount]);
 
@@ -177,18 +203,20 @@ function NavBadges({ user, type }) {
         const newCount =
           await fetchCount();
 
-        setCount(newCount);
+        setCount(
+          newCount,
+        );
       };
 
     window.addEventListener(
       "workmate-badges-refresh",
-      refreshBadges
+      refreshBadges,
     );
 
     return () => {
       window.removeEventListener(
         "workmate-badges-refresh",
-        refreshBadges
+        refreshBadges,
       );
     };
   }, [fetchCount]);

@@ -7,8 +7,7 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./useToast";
-
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function AdminMessages() {
   const navigate = useNavigate();
@@ -621,8 +620,7 @@ function AdminMessages() {
           <span>
             {visibleMessages.length}{" "}
             result
-            {visibleMessages.length ===
-            1
+            {visibleMessages.length === 1
               ? ""
               : "s"}
           </span>
@@ -655,8 +653,7 @@ function AdminMessages() {
               Try Again
             </button>
           </div>
-        ) : visibleMessages.length ===
-          0 ? (
+        ) : visibleMessages.length === 0 ? (
           <div className="admin-message-state">
             <div>📭</div>
 

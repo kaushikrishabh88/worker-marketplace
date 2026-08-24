@@ -6,6 +6,7 @@ import {
 
 import WorkerCard from "./WorkerCard";
 import { useToast } from "./useToast";
+import API_URL from "../api";
 
 function FindWorker() {
   const { error: showError } =
@@ -55,7 +56,7 @@ function FindWorker() {
 
           const response =
             await fetch(
-              "http://localhost:5000/api/workers",
+              `${API_URL}/api/workers`,
             );
 
           const data =

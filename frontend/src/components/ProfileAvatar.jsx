@@ -3,8 +3,7 @@ import {
   useState,
 } from "react";
 
-const API_BASE =
-  "http://localhost:5000";
+import API_URL from "../api";
 
 function ProfileAvatar({
   person,
@@ -27,11 +26,11 @@ function ProfileAvatar({
         return person.avatarUrl;
       }
 
-      return `${API_BASE}${person.avatarUrl}`;
+      return `${API_URL}${person.avatarUrl}`;
     }
 
     if (person?.avatarFileId) {
-      return `${API_BASE}/api/avatars/${person.avatarFileId}`;
+      return `${API_URL}/api/avatars/${person.avatarFileId}`;
     }
 
     return "";

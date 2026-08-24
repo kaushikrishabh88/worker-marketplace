@@ -6,8 +6,7 @@ import "./WorkerProfile.css";
 
 import ProfileAvatar from "./ProfileAvatar";
 import { useToast } from "./useToast";
-
-const API_URL = "http://localhost:5000";
+import API_URL from "../api";
 
 function WorkerProfile() {
   const { id } = useParams();
