@@ -7,6 +7,7 @@ const User = require("./models/User");
 const Job = require("./models/Job");
 const Application = require("./models/Application");
 const ContactMessage = require("./models/ContactMessage");
+const Review = require("./models/Review");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -2383,6 +2384,343 @@ app.get("/api/workers", async (req, res) => {
     });
   }
 });
+
+/* =========================================================
+   REVIEW HELPERS
+========================================================= */
+
+async function recalculateWorkerRating(workerId) {
+  const summary = await Review.aggregate([
+    {
+      $match: {
+        worker: new mongoose.Types.ObjectId(workerId),
+      },
+    },
+    {
+      $group: {
+        _id: "$worker",
+        averageRating: {
+          $avg: "$rating",
+        },
+        reviewCount: {
+          $sum: 1,
+        },
+      },
+    },
+  ]);
+
+  const averageRating =
+    summary.length > 0
+      ? Number(summary[0].averageRating.toFixed(1))
+      : 0;
+
+  await Worker.findByIdAndUpdate(workerId, {
+    rating: averageRating,
+  });
+
+  return {
+    rating: averageRating,
+    reviewCount:
+      summary.length > 0
+        ? summary[0].reviewCount
+        : 0,
+  };
+}
+
+/* =========================================================
+   GET WORKER REVIEWS
+   Public
+========================================================= */
+
+app.get("/api/workers/:id/reviews", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID.",
+      });
+    }
+
+    const worker = await Worker.findById(id);
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found.",
+      });
+    }
+
+    const reviews = await Review.find({
+      worker: id,
+    }).sort({
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: reviews.length,
+      rating: worker.rating || 0,
+      reviews,
+    });
+  } catch (error) {
+    console.error("Fetch worker reviews error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch reviews.",
+    });
+  }
+});
+
+/* =========================================================
+   REVIEW ELIGIBILITY
+   Employer Only
+========================================================= */
+
+app.get(
+  "/api/workers/:id/reviews/eligibility",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can review workers.",
+        });
+      }
+
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      const worker = await Worker.findById(id);
+
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          message: "Worker not found.",
+        });
+      }
+
+      const acceptedRequest = await ContactRequest.findOne({
+        employer: req.user.userId,
+        worker: id,
+        status: "accepted",
+      });
+
+      const existingReview = await Review.findOne({
+        employer: req.user.userId,
+        worker: id,
+      });
+
+      return res.status(200).json({
+        success: true,
+        eligible: Boolean(acceptedRequest),
+        existingReview: existingReview || null,
+      });
+    } catch (error) {
+      console.error("Review eligibility error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to check review eligibility.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   CREATE OR UPDATE REVIEW
+   Employer Only
+========================================================= */
+
+app.put(
+  "/api/workers/:id/review",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can review workers.",
+        });
+      }
+
+      const { id } = req.params;
+      const { rating, comment } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      const numericRating = Number(rating);
+      const cleanComment =
+        typeof comment === "string"
+          ? comment.trim()
+          : "";
+
+      if (
+        !Number.isInteger(numericRating) ||
+        numericRating < 1 ||
+        numericRating > 5
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Rating must be between 1 and 5.",
+        });
+      }
+
+      if (
+        cleanComment.length < 3 ||
+        cleanComment.length > 500
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Review must be between 3 and 500 characters.",
+        });
+      }
+
+      const worker = await Worker.findById(id);
+
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          message: "Worker not found.",
+        });
+      }
+
+      const acceptedRequest = await ContactRequest.findOne({
+        employer: req.user.userId,
+        worker: id,
+        status: "accepted",
+      });
+
+      if (!acceptedRequest) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You can review this worker only after an accepted contact request.",
+        });
+      }
+
+      const employer = await User.findById(req.user.userId);
+
+      if (!employer) {
+        return res.status(404).json({
+          success: false,
+          message: "Employer account not found.",
+        });
+      }
+
+      const review = await Review.findOneAndUpdate(
+        {
+          employer: req.user.userId,
+          worker: id,
+        },
+        {
+          employer: req.user.userId,
+          worker: id,
+          employerName: employer.name,
+          rating: numericRating,
+          comment: cleanComment,
+        },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        },
+      );
+
+      const ratingSummary =
+        await recalculateWorkerRating(id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Review saved successfully.",
+        review,
+        rating: ratingSummary.rating,
+        reviewCount: ratingSummary.reviewCount,
+      });
+    } catch (error) {
+      console.error("Save review error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save review.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   DELETE REVIEW
+   Employer Only - Own Review
+========================================================= */
+
+app.delete(
+  "/api/workers/:id/review",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can delete reviews.",
+        });
+      }
+
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      const review = await Review.findOneAndDelete({
+        employer: req.user.userId,
+        worker: id,
+      });
+
+      if (!review) {
+        return res.status(404).json({
+          success: false,
+          message: "Review not found.",
+        });
+      }
+
+      const ratingSummary =
+        await recalculateWorkerRating(id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Review deleted successfully.",
+        rating: ratingSummary.rating,
+        reviewCount: ratingSummary.reviewCount,
+      });
+    } catch (error) {
+      console.error("Delete review error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete review.",
+      });
+    }
+  },
+);
 
 /* =========================================================
    GET SINGLE WORKER

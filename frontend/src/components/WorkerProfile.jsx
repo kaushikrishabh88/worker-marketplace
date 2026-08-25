@@ -54,6 +54,19 @@ function WorkerProfile() {
   const [contactStatusLoading, setContactStatusLoading] = useState(false);
 
   /* =========================================================
+     REVIEWS STATE
+  ========================================================= */
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewEligible, setReviewEligible] = useState(false);
+  const [existingReview, setExistingReview] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewDeleting, setReviewDeleting] = useState(false);
+
+  /* =========================================================
      DELETE STATE
   ========================================================= */
 
@@ -163,6 +176,265 @@ function WorkerProfile() {
 
     fetchContactStatus();
   }, [id, token, loggedInUser?.role]);
+
+  /* =========================================================
+     FETCH REVIEWS
+  ========================================================= */
+
+  const fetchReviews = useCallback(async () => {
+    try {
+      setReviewsLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/api/workers/${id}/reviews`,
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to load reviews.",
+        );
+      }
+
+      setReviews(data.reviews || []);
+
+      setWorker((previous) =>
+        previous
+          ? {
+              ...previous,
+              rating: data.rating ?? previous.rating ?? 0,
+            }
+          : previous,
+      );
+    } catch (error) {
+      console.error("Fetch reviews error:", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    fetchReviews();
+  }, [id, fetchReviews]);
+
+  /* =========================================================
+     CHECK REVIEW ELIGIBILITY
+  ========================================================= */
+
+  const fetchReviewEligibility = useCallback(async () => {
+    if (
+      !token ||
+      !id ||
+      loggedInUser?.role !== "employer"
+    ) {
+      setReviewEligible(false);
+      setExistingReview(null);
+
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/workers/${id}/reviews/eligibility`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to check review eligibility.",
+        );
+      }
+
+      setReviewEligible(Boolean(data.eligible));
+      setExistingReview(data.existingReview || null);
+
+      if (data.existingReview) {
+        setReviewRating(data.existingReview.rating || 5);
+        setReviewComment(data.existingReview.comment || "");
+      }
+    } catch (error) {
+      console.error("Review eligibility error:", error);
+
+      setReviewEligible(false);
+      setExistingReview(null);
+    }
+  }, [id, token, loggedInUser?.role]);
+
+  useEffect(() => {
+    fetchReviewEligibility();
+  }, [fetchReviewEligibility]);
+
+  /* =========================================================
+     SAVE REVIEW
+  ========================================================= */
+
+  async function handleSaveReview(event) {
+    event.preventDefault();
+
+    if (!token) {
+      toast.warning("Please login as an Employer.");
+
+      return;
+    }
+
+    const cleanComment = reviewComment.trim();
+
+    if (
+      reviewRating < 1 ||
+      reviewRating > 5
+    ) {
+      toast.warning("Please choose a rating from 1 to 5.");
+
+      return;
+    }
+
+    if (
+      cleanComment.length < 3 ||
+      cleanComment.length > 500
+    ) {
+      toast.warning(
+        "Review must be between 3 and 500 characters.",
+      );
+
+      return;
+    }
+
+    try {
+      setReviewSaving(true);
+
+      const response = await fetch(
+        `${API_URL}/api/workers/${id}/review`,
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            rating: reviewRating,
+            comment: cleanComment,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to save review.",
+        );
+      }
+
+      setExistingReview(data.review);
+
+      setWorker((previous) =>
+        previous
+          ? {
+              ...previous,
+              rating: data.rating ?? previous.rating ?? 0,
+            }
+          : previous,
+      );
+
+      await fetchReviews();
+      await fetchReviewEligibility();
+
+      toast.success(
+        existingReview
+          ? "Review updated successfully!"
+          : "Review submitted successfully!",
+      );
+    } catch (error) {
+      console.error("Save review error:", error);
+
+      toast.error(
+        error.message || "Unable to save review.",
+      );
+    } finally {
+      setReviewSaving(false);
+    }
+  }
+
+  /* =========================================================
+     DELETE REVIEW
+  ========================================================= */
+
+  async function handleDeleteReview() {
+    if (!existingReview || !token) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete your review for this worker?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setReviewDeleting(true);
+
+      const response = await fetch(
+        `${API_URL}/api/workers/${id}/review`,
+        {
+          method: "DELETE",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to delete review.",
+        );
+      }
+
+      setExistingReview(null);
+      setReviewRating(5);
+      setReviewComment("");
+
+      setWorker((previous) =>
+        previous
+          ? {
+              ...previous,
+              rating: data.rating ?? 0,
+            }
+          : previous,
+      );
+
+      await fetchReviews();
+      await fetchReviewEligibility();
+
+      toast.success("Review deleted successfully.");
+    } catch (error) {
+      console.error("Delete review error:", error);
+
+      toast.error(
+        error.message || "Unable to delete review.",
+      );
+    } finally {
+      setReviewDeleting(false);
+    }
+  }
 
   /* =========================================================
      OPEN EDIT FORM
@@ -810,6 +1082,208 @@ function WorkerProfile() {
                 </button>
               </div>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================
+          REVIEWS & RATINGS
+      ===================================================== */}
+
+      <div className="worker-reviews-section">
+        <div className="worker-reviews-header">
+          <div>
+            <span className="reviews-eyebrow">
+              EMPLOYER FEEDBACK
+            </span>
+
+            <h2>Reviews & Ratings</h2>
+
+            <p>
+              Feedback from employers who connected with {worker.name}.
+            </p>
+          </div>
+
+          <div className="reviews-summary">
+            <strong>
+              ⭐ {Number(worker.rating || 0).toFixed(1)}
+            </strong>
+
+            <span>
+              {reviews.length}{" "}
+              {reviews.length === 1 ? "review" : "reviews"}
+            </span>
+          </div>
+        </div>
+
+        {loggedInUser?.role === "employer" &&
+          reviewEligible && (
+            <form
+              className="worker-review-form"
+              onSubmit={handleSaveReview}
+            >
+              <div className="review-form-heading">
+                <div>
+                  <strong>
+                    {existingReview
+                      ? "Update your review"
+                      : "Rate this worker"}
+                  </strong>
+
+                  <p>
+                    Share useful feedback about your experience.
+                  </p>
+                </div>
+
+                {existingReview && (
+                  <span className="review-existing-badge">
+                    Your review
+                  </span>
+                )}
+              </div>
+
+              <div
+                className="review-star-picker"
+                aria-label="Choose rating"
+              >
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    className={
+                      star <= reviewRating
+                        ? "review-star active"
+                        : "review-star"
+                    }
+                    onClick={() => setReviewRating(star)}
+                    aria-label={`${star} star rating`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={reviewComment}
+                onChange={(event) =>
+                  setReviewComment(event.target.value)
+                }
+                rows="4"
+                maxLength="500"
+                placeholder="How was your experience working with this worker?"
+                required
+              />
+
+              <div className="review-form-footer">
+                <small>
+                  {reviewComment.length}/500
+                </small>
+
+                <div className="review-form-actions">
+                  {existingReview && (
+                    <button
+                      type="button"
+                      className="review-delete-btn"
+                      onClick={handleDeleteReview}
+                      disabled={
+                        reviewDeleting || reviewSaving
+                      }
+                    >
+                      {reviewDeleting
+                        ? "Deleting..."
+                        : "Delete Review"}
+                    </button>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="review-save-btn"
+                    disabled={
+                      reviewSaving || reviewDeleting
+                    }
+                  >
+                    {reviewSaving
+                      ? "Saving..."
+                      : existingReview
+                        ? "Update Review"
+                        : "Submit Review"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
+        {loggedInUser?.role === "employer" &&
+          !reviewEligible &&
+          contactRequest?.status === "accepted" && (
+            <div className="review-info-message">
+              Review eligibility is being verified.
+            </div>
+          )}
+
+        <div className="worker-reviews-list">
+          {reviewsLoading ? (
+            <div className="reviews-empty">
+              Loading reviews...
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="reviews-empty">
+              <span>⭐</span>
+
+              <strong>No reviews yet</strong>
+
+              <p>
+                Verified employer feedback will appear here.
+              </p>
+            </div>
+          ) : (
+            reviews.map((review) => (
+              <article
+                className="worker-review-card"
+                key={review._id}
+              >
+                <div className="worker-review-top">
+                  <div>
+                    <strong>
+                      {review.employerName ||
+                        "WorkMate Employer"}
+                    </strong>
+
+                    <div className="worker-review-stars">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={
+                            star <= review.rating
+                              ? "filled"
+                              : ""
+                          }
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <time>
+                    {review.createdAt
+                      ? new Date(
+                          review.createdAt,
+                        ).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )
+                      : ""}
+                  </time>
+                </div>
+
+                <p>{review.comment}</p>
+              </article>
+            ))
           )}
         </div>
       </div>
