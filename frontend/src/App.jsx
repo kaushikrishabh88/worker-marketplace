@@ -20,6 +20,7 @@ import DashboardSummary from "./components/DashboardSummary";
 import NavBadges from "./components/NavBadges";
 import ProfileAvatar from "./components/ProfileAvatar";
 import EmployerProfile from "./components/EmployerProfile";
+import SavedWorkers from "./components/SavedWorkers";
 import ContactUs from "./components/ContactUs";
 import AdminLogin from "./components/AdminLogin";
 import AdminMessages from "./components/AdminMessages";
@@ -605,6 +606,10 @@ function HomePage() {
             <>
               <a href="#find-workers">
                 {t("findWorkers")}
+              </a>
+
+              <a href="#saved-workers">
+                ♥ Saved Workers
               </a>
 
               <a href="#sent-requests">
@@ -2006,6 +2011,8 @@ function HomePage() {
           "employer" && (
           <>
             <FindWorker />
+
+            <SavedWorkers />
 
             <SentRequests />
 

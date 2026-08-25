@@ -8,6 +8,7 @@ const Job = require("./models/Job");
 const Application = require("./models/Application");
 const ContactMessage = require("./models/ContactMessage");
 const Review = require("./models/Review");
+const SavedWorker = require("./models/SavedWorker");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -2358,6 +2359,224 @@ app.get("/api/workers/me", authenticateUser, async (req, res) => {
     });
   }
 });
+
+/* =========================================================
+   GET MY SAVED WORKERS
+   Employer Only
+========================================================= */
+
+app.get("/api/saved-workers", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "employer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only employers can view saved workers.",
+      });
+    }
+
+    const savedWorkers = await SavedWorker.find({
+      employer: req.user.userId,
+    })
+      .populate("worker")
+      .sort({ createdAt: -1 });
+
+    const workers = savedWorkers
+      .map((savedWorker) => savedWorker.worker)
+      .filter(Boolean);
+
+    return res.status(200).json({
+      success: true,
+      count: workers.length,
+      workers,
+    });
+  } catch (error) {
+    console.error("Fetch saved workers error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch saved workers.",
+    });
+  }
+});
+
+/* =========================================================
+   GET WORKER SAVED STATUS
+   Employer Only
+========================================================= */
+
+app.get(
+  "/api/workers/:id/saved-status",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can check saved workers.",
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      const worker = await Worker.findById(req.params.id)
+        .select("_id")
+        .lean();
+
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          message: "Worker not found.",
+        });
+      }
+
+      const savedWorker = await SavedWorker.findOne({
+        employer: req.user.userId,
+        worker: worker._id,
+      })
+        .select("_id")
+        .lean();
+
+      return res.status(200).json({
+        success: true,
+        saved: Boolean(savedWorker),
+      });
+    } catch (error) {
+      console.error("Check saved worker status error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to check saved worker status.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   SAVE WORKER
+   Employer Only
+========================================================= */
+
+app.post(
+  "/api/workers/:id/save",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can save workers.",
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      const worker = await Worker.findById(req.params.id)
+        .select("_id")
+        .lean();
+
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          message: "Worker not found.",
+        });
+      }
+
+      await SavedWorker.findOneAndUpdate(
+        {
+          employer: req.user.userId,
+          worker: worker._id,
+        },
+        {
+          $setOnInsert: {
+            employer: req.user.userId,
+            worker: worker._id,
+          },
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        },
+      );
+
+      return res.status(200).json({
+        success: true,
+        saved: true,
+        message: "Worker saved successfully.",
+      });
+    } catch (error) {
+      console.error("Save worker error:", error);
+
+      if (error?.code === 11000) {
+        return res.status(200).json({
+          success: true,
+          saved: true,
+          message: "Worker is already saved.",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save worker.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   UNSAVE WORKER
+   Employer Only
+========================================================= */
+
+app.delete(
+  "/api/workers/:id/save",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "employer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only employers can remove saved workers.",
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid worker ID.",
+        });
+      }
+
+      await SavedWorker.deleteOne({
+        employer: req.user.userId,
+        worker: req.params.id,
+      });
+
+      return res.status(200).json({
+        success: true,
+        saved: false,
+        message: "Worker removed from saved workers.",
+      });
+    } catch (error) {
+      console.error("Unsave worker error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to remove saved worker.",
+      });
+    }
+  },
+);
 
 /* =========================================================
    GET ALL WORKERS

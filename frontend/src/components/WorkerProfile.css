@@ -1284,3 +1284,44 @@
     font-size: 32px;
   }
 }
+
+/* =========================================================
+   SAVE WORKER
+========================================================= */
+
+.save-worker-btn {
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid rgba(190, 24, 93, 0.24);
+  border-radius: 12px;
+  background: rgba(244, 63, 94, 0.07);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.save-worker-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(244, 63, 94, 0.12);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.save-worker-btn.saved {
+  background: rgba(244, 63, 94, 0.14);
+}
+
+.save-worker-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 640px) {
+  .save-worker-btn {
+    width: 100%;
+  }
+}

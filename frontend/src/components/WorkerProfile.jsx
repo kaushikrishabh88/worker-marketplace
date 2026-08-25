@@ -54,6 +54,14 @@ function WorkerProfile() {
   const [contactStatusLoading, setContactStatusLoading] = useState(false);
 
   /* =========================================================
+     SAVED WORKER STATE
+  ========================================================= */
+
+  const [workerSaved, setWorkerSaved] = useState(false);
+  const [savedStatusLoading, setSavedStatusLoading] = useState(false);
+  const [savingWorker, setSavingWorker] = useState(false);
+
+  /* =========================================================
      REVIEWS STATE
   ========================================================= */
 
@@ -176,6 +184,116 @@ function WorkerProfile() {
 
     fetchContactStatus();
   }, [id, token, loggedInUser?.role]);
+
+  /* =========================================================
+     FETCH SAVED WORKER STATUS
+  ========================================================= */
+
+  useEffect(() => {
+    if (!token || !id || loggedInUser?.role !== "employer") {
+      setWorkerSaved(false);
+      return;
+    }
+
+    const fetchSavedStatus = async () => {
+      try {
+        setSavedStatusLoading(true);
+
+        const response = await fetch(
+          `${API_URL}/api/workers/${id}/saved-status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to check saved worker status.",
+          );
+        }
+
+        setWorkerSaved(Boolean(data.saved));
+      } catch (error) {
+        console.error("Saved worker status error:", error);
+        setWorkerSaved(false);
+      } finally {
+        setSavedStatusLoading(false);
+      }
+    };
+
+    fetchSavedStatus();
+  }, [id, token, loggedInUser?.role]);
+
+  /* =========================================================
+     SAVE / UNSAVE WORKER
+  ========================================================= */
+
+  async function handleToggleSavedWorker() {
+    if (!token) {
+      toast.warning("Please login to save workers.");
+      navigate("/auth");
+      return;
+    }
+
+    if (loggedInUser?.role !== "employer") {
+      toast.warning("Only employers can save workers.");
+      return;
+    }
+
+    if (!worker?._id || savingWorker) {
+      return;
+    }
+
+    try {
+      setSavingWorker(true);
+
+      const response = await fetch(
+        `${API_URL}/api/workers/${worker._id}/save`,
+        {
+          method: workerSaved ? "DELETE" : "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            (workerSaved
+              ? "Unable to remove saved worker."
+              : "Unable to save worker."),
+        );
+      }
+
+      const nextSaved =
+        typeof data.saved === "boolean"
+          ? data.saved
+          : !workerSaved;
+
+      setWorkerSaved(nextSaved);
+
+      toast.success(
+        nextSaved
+          ? "Worker saved successfully!"
+          : "Worker removed from saved workers.",
+      );
+    } catch (error) {
+      console.error("Save worker error:", error);
+
+      toast.error(
+        error.message || "Unable to update saved worker.",
+      );
+    } finally {
+      setSavingWorker(false);
+    }
+  }
 
   /* =========================================================
      FETCH REVIEWS
@@ -1026,6 +1144,28 @@ function WorkerProfile() {
             </div>
 
             {/* OWNER KO CONTACT BUTTON NAHI DIKHEGA */}
+
+            {!isOwner && loggedInUser?.role === "employer" && (
+              <button
+                type="button"
+                className={`save-worker-btn ${
+                  workerSaved ? "saved" : ""
+                }`}
+                onClick={handleToggleSavedWorker}
+                disabled={savedStatusLoading || savingWorker}
+                aria-pressed={workerSaved}
+              >
+                {savedStatusLoading
+                  ? "Checking..."
+                  : savingWorker
+                    ? workerSaved
+                      ? "Removing..."
+                      : "Saving..."
+                    : workerSaved
+                      ? "♥ Saved"
+                      : "♡ Save Worker"}
+              </button>
+            )}
 
             {!isOwner && (
               <button
