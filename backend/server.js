@@ -211,7 +211,24 @@ const app = express();
    Middleware
 ========================================================= */
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS."));
+    },
+  }),
+);
+
 app.use(express.json());
 
 /* =========================================================
@@ -2297,6 +2314,46 @@ app.post("/api/workers", authenticateUser, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to register worker.",
+    });
+  }
+});
+
+
+/* =========================================================
+   GET CURRENT WORKER PROFILE
+   Worker Only
+========================================================= */
+
+app.get("/api/workers/me", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "worker") {
+      return res.status(403).json({
+        success: false,
+        message: "Only worker accounts can access a worker profile.",
+      });
+    }
+
+    const worker = await Worker.findOne({
+      user: req.user.userId,
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker profile not found.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      worker,
+    });
+  } catch (error) {
+    console.error("Fetch current worker profile error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch worker profile.",
     });
   }
 });

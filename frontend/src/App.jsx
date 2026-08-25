@@ -434,42 +434,36 @@ function HomePage() {
     try {
       setOpeningProfile(true);
 
-      /*
-       * Temporary worker lookup.
-       * Production hardening:
-       * replace with /api/workers/me
-       */
-
-      const response = await fetch(`${API_URL}/api/workers`);
+      const response = await fetch(
+        `${API_URL}/api/workers/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 404) {
+          document
+            .getElementById("register-worker")
+            ?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+
+          return;
+        }
+
         throw new Error(
           data.message ||
             "Unable to load worker profile.",
         );
       }
 
-      const currentUserId =
-        user.id ||
-        user._id;
-
-      const workerProfile =
-        (data.workers || []).find(
-          (worker) => {
-            const workerUserId =
-              typeof worker.user === "object"
-                ? worker.user?._id ||
-                  worker.user?.id
-                : worker.user;
-
-            return (
-              String(workerUserId || "") ===
-              String(currentUserId || "")
-            );
-          },
-        );
+      const workerProfile = data.worker;
 
       if (workerProfile?._id) {
         navigate(
