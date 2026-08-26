@@ -12,6 +12,19 @@ function FindWorker() {
   const { error: showError } =
     useToast();
 
+  const currentUser = useMemo(() => {
+    try {
+      const storedUser =
+        localStorage.getItem("workmateUser");
+
+      return storedUser
+        ? JSON.parse(storedUser)
+        : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [workers, setWorkers] =
     useState([]);
 
@@ -149,6 +162,15 @@ function FindWorker() {
       const result =
         workers.filter(
           (worker) => {
+            const isOwnWorkerProfile =
+              currentUser?.role === "worker" &&
+              String(worker.user || "") ===
+                String(currentUser?._id || "");
+
+            if (isOwnWorkerProfile) {
+              return false;
+            }
+
             const name =
               worker.name
                 ?.toLowerCase() ||
@@ -255,6 +277,7 @@ function FindWorker() {
       return result;
     }, [
       workers,
+      currentUser,
       searchTerm,
       selectedSkill,
       selectedLocation,
