@@ -484,6 +484,29 @@ function AdminMessages() {
       </header>
 
       <main className="admin-messages-main">
+        <nav className="admin-section-tabs">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/workers")}
+          >
+            👷 Workers
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/employers")}
+          >
+            🏢 Employers
+          </button>
+
+          <button
+            type="button"
+            className="active"
+          >
+            📨 Contact Messages
+          </button>
+        </nav>
+
         <div className="admin-messages-heading">
           <div>
             <span>

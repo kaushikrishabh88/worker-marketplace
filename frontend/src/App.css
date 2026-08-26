@@ -15878,3 +15878,269 @@ main,
 
   background: #ffffff;
 }
+/* =========================================================
+   ADMIN ACCOUNT DIRECTORY
+========================================================= */
+
+.admin-section-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 26px;
+  padding: 6px;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.admin-section-tabs button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-section-tabs button.active {
+  background: #111827;
+  color: #ffffff;
+}
+
+.admin-directory-summary {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(160px, 1fr)
+  );
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.admin-directory-summary > div {
+  padding: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-directory-summary strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.6rem;
+}
+
+.admin-directory-summary span {
+  font-size: 0.88rem;
+  opacity: 0.7;
+}
+
+.admin-directory-toolbar {
+  margin-bottom: 22px;
+}
+
+.admin-directory-toolbar input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 13px;
+  background: #ffffff;
+  font: inherit;
+  outline: none;
+}
+
+.admin-directory-toolbar input:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+.admin-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(290px, 1fr)
+  );
+  gap: 18px;
+}
+
+.admin-directory-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.admin-directory-card-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-directory-avatar {
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+
+.admin-directory-card h3 {
+  margin: 0 0 4px;
+}
+
+.admin-directory-card-top p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.87rem;
+  opacity: 0.7;
+}
+
+.admin-directory-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.admin-directory-badges span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.admin-directory-badges .verified {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+
+.admin-directory-badges .pending {
+  background: rgba(245, 158, 11, 0.11);
+  color: #b45309;
+}
+
+.admin-directory-details {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-directory-details p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.admin-directory-primary {
+  min-height: 44px;
+  margin-top: auto;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-directory-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.admin-profile-modal {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.22);
+}
+
+.admin-profile-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.07);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.admin-profile-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.admin-profile-modal h2 {
+  margin: 7px 0 22px;
+}
+
+.admin-profile-detail-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.admin-profile-detail-list > div {
+  padding: 14px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.admin-profile-detail-list span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.77rem;
+  opacity: 0.65;
+}
+
+.admin-profile-detail-list strong,
+.admin-profile-detail-list p {
+  overflow-wrap: anywhere;
+}
+
+.admin-profile-detail-list p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.admin-profile-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .admin-directory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-profile-detail-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-profile-wide {
+    grid-column: auto;
+  }
+
+  .admin-profile-modal {
+    padding: 22px 16px;
+  }
+}

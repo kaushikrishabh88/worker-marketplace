@@ -24,6 +24,7 @@ import SavedWorkers from "./components/SavedWorkers";
 import ContactUs from "./components/ContactUs";
 import AdminLogin from "./components/AdminLogin";
 import AdminMessages from "./components/AdminMessages";
+import AdminDirectory from "./components/AdminDirectory";
 import VerifyEmail from "./components/VerifyEmail";
 import ResetPassword from "./components/ResetPassword";
 
@@ -2159,6 +2160,20 @@ function App() {
             path="/admin/login"
             element={
               <AdminLogin />
+            }
+          />
+
+          <Route
+            path="/admin/workers"
+            element={
+              <AdminDirectory type="workers" />
+            }
+          />
+
+          <Route
+            path="/admin/employers"
+            element={
+              <AdminDirectory type="employers" />
             }
           />
 

@@ -497,6 +497,98 @@ Message ID: ${contactMessage._id}
 });
 
 /* =========================================================
+   ADMIN - GET WORKERS
+   Admin Only
+========================================================= */
+
+app.get(
+  "/api/admin/workers",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const users = await User.find({
+        role: "worker",
+      })
+        .select(
+          "name email emailVerified role avatarFileId phone createdAt updatedAt"
+        )
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const userIds = users.map((user) => user._id);
+
+      const workerProfiles = await Worker.find({
+        user: { $in: userIds },
+      })
+        .lean();
+
+      const profileByUserId = new Map(
+        workerProfiles.map((worker) => [
+          String(worker.user),
+          worker,
+        ])
+      );
+
+      const workers = users.map((user) => ({
+        ...user,
+        workerProfile:
+          profileByUserId.get(String(user._id)) || null,
+      }));
+
+      return res.status(200).json({
+        success: true,
+        count: workers.length,
+        workers,
+      });
+    } catch (error) {
+      console.error("Fetch admin workers error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to load workers.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   ADMIN - GET EMPLOYERS
+   Admin Only
+========================================================= */
+
+app.get(
+  "/api/admin/employers",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const employers = await User.find({
+        role: "employer",
+      })
+        .select(
+          "name email emailVerified role avatarFileId phone businessName location aboutBusiness createdAt updatedAt"
+        )
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.status(200).json({
+        success: true,
+        count: employers.length,
+        employers,
+      });
+    } catch (error) {
+      console.error("Fetch admin employers error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to load employers.",
+      });
+    }
+  },
+);
+
+/* =========================================================
    ADMIN - GET CONTACT MESSAGES
 ========================================================= */
 
