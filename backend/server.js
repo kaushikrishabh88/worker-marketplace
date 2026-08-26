@@ -291,6 +291,62 @@ function requireAdmin(req, res, next) {
 }
 
 /* =========================================================
+   WORKER PROFILE VERIFICATION
+========================================================= */
+
+function isWorkerProfileComplete(worker, accountUser) {
+  if (!worker || !accountUser?.emailVerified) {
+    return false;
+  }
+
+  const hasSkills =
+    Array.isArray(worker.skills) &&
+    worker.skills.some(
+      (skill) =>
+        typeof skill === "string" &&
+        skill.trim().length > 0,
+    );
+
+  const salary = Number(worker.salary);
+
+  return Boolean(
+    String(worker.name || "").trim() &&
+      String(worker.phone || "").trim() &&
+      String(worker.role || "").trim() &&
+      hasSkills &&
+      String(worker.location || "").trim() &&
+      String(worker.experience || "").trim() &&
+      ["full-time", "part-time", "both"].includes(
+        worker.availability,
+      ) &&
+      Number.isFinite(salary) &&
+      salary >= 0 &&
+      String(worker.description || "").trim().length >= 3
+  );
+}
+
+async function refreshWorkerVerificationByUserId(userId) {
+  const [accountUser, worker] = await Promise.all([
+    User.findById(userId),
+    Worker.findOne({ user: userId }),
+  ]);
+
+  if (!worker) {
+    return null;
+  }
+
+  const verified =
+    isWorkerProfileComplete(worker, accountUser);
+
+  if (worker.verified !== verified) {
+    worker.verified = verified;
+    await worker.save();
+  }
+
+  return worker;
+}
+
+/* =========================================================
    PROFILE AVATAR ROUTES
 ========================================================= */
 
@@ -836,6 +892,12 @@ app.get("/api/auth/verify-email", async (req, res) => {
     user.emailVerificationExpires = null;
 
     await user.save();
+    if (user.role === "worker") {
+      await refreshWorkerVerificationByUserId(
+        user._id,
+      );
+    }
+
 
     return res.status(200).json({
       success: true,
@@ -2296,6 +2358,21 @@ app.post("/api/workers", authenticateUser, async (req, res) => {
       salary: numericSalary,
 
       emoji: emoji || "👨‍🍳",
+
+      verified: isWorkerProfileComplete(
+        {
+          name: name.trim(),
+          phone: phone.trim(),
+          role: role.trim(),
+          skills,
+          location: location.trim(),
+          experience,
+          availability,
+          description: description?.trim() || "",
+          salary: numericSalary,
+        },
+        accountUser,
+      ),
     });
 
     res.status(201).json({
@@ -3090,6 +3167,16 @@ app.put("/api/workers/:id", authenticateUser, async (req, res) => {
     if (emoji) {
       existingWorker.emoji = emoji;
     }
+
+    const accountUser = await User.findById(
+      req.user.userId,
+    );
+
+    existingWorker.verified =
+      isWorkerProfileComplete(
+        existingWorker,
+        accountUser,
+      );
 
     const updatedWorker = await existingWorker.save();
 

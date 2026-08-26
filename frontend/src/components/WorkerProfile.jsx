@@ -1085,7 +1085,11 @@ function WorkerProfile() {
         />
 
         <div className="profile-content">
-          <span className="profile-verified">✓ Verified Worker</span>
+          {worker.verified && (
+            <span className="profile-verified">
+              ✓ Profile Verified
+            </span>
+          )}
 
           <h1>{worker.name}</h1>
 

@@ -38,9 +38,11 @@ function WorkerCard({ worker }) {
             </p>
           </div>
 
-          <span className="verified-badge">
-            ✓ Verified
-          </span>
+          {worker.verified && (
+            <span className="verified-badge">
+              ✓ Profile Verified
+            </span>
+          )}
         </div>
 
         <div className="worker-tags">
