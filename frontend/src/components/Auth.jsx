@@ -1067,9 +1067,26 @@ function Auth() {
                   </div>
 
                   <p className="auth-suspension-help">
-                    If you believe this was a mistake, please contact
-                    WorkMate support.
+                    If you believe this was a mistake, you can send an
+                    appeal directly to the WorkMate team.
                   </p>
+
+                  <button
+                    type="button"
+                    className="auth-suspension-support-btn"
+                    onClick={() => {
+                      const params = new URLSearchParams({
+                        support: "suspension",
+                        email: formData.email.trim(),
+                        role: loginRole,
+                        reason: suspensionNotice.reason || "",
+                      });
+
+                      navigate(`/?${params.toString()}#contact-us`);
+                    }}
+                  >
+                    Contact WorkMate Support →
+                  </button>
                 </div>
               )}
 

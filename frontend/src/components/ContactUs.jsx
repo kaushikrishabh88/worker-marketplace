@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useToast } from "./useToast";
 import API_URL from "../api";
 
 function ContactUs() {
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(false);
 
@@ -15,6 +17,40 @@ function ContactUs() {
     subject: "",
     message: "",
   });
+
+  useEffect(() => {
+    if (searchParams.get("support") !== "suspension") {
+      return;
+    }
+
+    const email = searchParams.get("email") || "";
+    const role = searchParams.get("role") || "employer";
+    const reason = searchParams.get("reason") || "";
+
+    setFormData((previous) => ({
+      ...previous,
+      email,
+      userType:
+        role === "worker" || role === "employer"
+          ? role
+          : previous.userType,
+      subject: "Account suspension appeal",
+      message: reason
+        ? `I would like to appeal my WorkMate account suspension.\n\nSuspension reason: ${reason}\n\nPlease review my account and let me know if you need any additional information.`
+        : "I would like to appeal my WorkMate account suspension. Please review my account and let me know if you need any additional information.",
+    }));
+
+    const nextParams = new URLSearchParams(searchParams);
+
+    nextParams.delete("support");
+    nextParams.delete("email");
+    nextParams.delete("role");
+    nextParams.delete("reason");
+
+    setSearchParams(nextParams, {
+      replace: true,
+    });
+  }, [searchParams, setSearchParams]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -259,6 +295,10 @@ function ContactUs() {
 
                 <option value="Account issue">
                   Account issue
+                </option>
+
+                <option value="Account suspension appeal">
+                  Account suspension appeal
                 </option>
 
                 <option value="Other">
