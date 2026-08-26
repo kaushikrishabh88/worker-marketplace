@@ -12,6 +12,8 @@ function Auth() {
 
   const [mode, setMode] = useState("login");
 
+  const [suspensionNotice, setSuspensionNotice] = useState(null);
+
   const [loginRole, setLoginRole] = useState("employer");
 
   const [formData, setFormData] = useState({
@@ -272,6 +274,7 @@ function Auth() {
 
     setLoading(true);
     setError("");
+    setSuspensionNotice(null);
 
     try {
       const endpoint =
@@ -305,6 +308,24 @@ function Auth() {
       const data = await parseResponse(response);
 
       if (!response.ok) {
+        if (data.accountSuspended) {
+          setSuspensionNotice({
+            message:
+              data.message ||
+              "Your WorkMate account has been suspended by an administrator.",
+            reason:
+              data.reason ||
+              "Please contact WorkMate support for more information.",
+          });
+
+          setFormData((previous) => ({
+            ...previous,
+            password: "",
+          }));
+
+          return;
+        }
+
         if (data.verificationRequired) {
           const email = data.email || formData.email.trim();
 
@@ -1019,7 +1040,42 @@ function Auth() {
 
               {/* ERROR */}
 
-              {error && <p className="auth-error">⚠️ {error}</p>}
+              {suspensionNotice && (
+                <div
+                  className="auth-suspension-notice"
+                  role="alert"
+                >
+                  <div className="auth-suspension-heading">
+                    <span
+                      className="auth-suspension-icon"
+                      aria-hidden="true"
+                    >
+                      ⚠️
+                    </span>
+
+                    <div>
+                      <strong>Account Suspended</strong>
+
+                      <p>{suspensionNotice.message}</p>
+                    </div>
+                  </div>
+
+                  <div className="auth-suspension-reason">
+                    <span>Reason</span>
+
+                    <p>{suspensionNotice.reason}</p>
+                  </div>
+
+                  <p className="auth-suspension-help">
+                    If you believe this was a mistake, please contact
+                    WorkMate support.
+                  </p>
+                </div>
+              )}
+
+              {!suspensionNotice && error && (
+                <p className="auth-error">⚠️ {error}</p>
+              )}
 
               {/* SUBMIT */}
 

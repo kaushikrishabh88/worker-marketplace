@@ -3376,6 +3376,83 @@ body,
 }
 
 /* =========================================================
+   SUSPENDED ACCOUNT NOTICE
+========================================================= */
+
+.auth-suspension-notice {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+  color: #7f1d1d;
+  animation: authMessageEnter 0.3s ease;
+}
+
+.auth-suspension-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.auth-suspension-icon {
+  flex: 0 0 auto;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.auth-suspension-heading strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #b91c1c;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.auth-suspension-heading p {
+  margin: 0;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.auth-suspension-reason {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.auth-suspension-reason span {
+  display: block;
+  margin-bottom: 5px;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-suspension-reason p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.auth-suspension-help {
+  margin: 11px 0 0;
+  color: #7f1d1d;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* =========================================================
    LOGIN / SIGNUP BUTTON
 ========================================================= */
 
