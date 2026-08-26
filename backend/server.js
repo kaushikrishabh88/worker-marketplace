@@ -2879,14 +2879,23 @@ app.patch(
         });
       }
 
-      request.status = status;
-
-      await request.save();
+      const updatedRequest =
+        await ContactRequest.findByIdAndUpdate(
+          request._id,
+          {
+            $set: {
+              status,
+            },
+          },
+          {
+            new: true,
+          },
+        );
 
       res.status(200).json({
         success: true,
         message: `Request ${status} successfully.`,
-        request,
+        request: updatedRequest,
       });
     } catch (error) {
       console.error("Update contact request error:", error);
