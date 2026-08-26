@@ -12,24 +12,63 @@ function FindWorker() {
   const { error: showError } =
     useToast();
 
-  const currentUser = useMemo(() => {
-    try {
-      const storedUser =
-        localStorage.getItem("workmateUser");
-
-      return storedUser
-        ? JSON.parse(storedUser)
-        : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  const [currentWorkerId, setCurrentWorkerId] =
+    useState("");
 
   const [workers, setWorkers] =
     useState([]);
 
   const [loading, setLoading] =
     useState(true);
+
+  useEffect(() => {
+    const loadCurrentWorker = async () => {
+      try {
+        const token =
+          localStorage.getItem("workmateToken");
+        const storedUser =
+          localStorage.getItem("workmateUser");
+
+        if (!token || !storedUser) {
+          return;
+        }
+
+        const user = JSON.parse(storedUser);
+
+        if (user?.role !== "worker") {
+          return;
+        }
+
+        const response = await fetch(
+          `${API_URL}/api/workers/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.worker?._id) {
+          setCurrentWorkerId(
+            String(data.worker._id),
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Fetch current worker profile error:",
+          error,
+        );
+      }
+    };
+
+    loadCurrentWorker();
+  }, []);
 
   const [
     fetchError,
@@ -163,9 +202,9 @@ function FindWorker() {
         workers.filter(
           (worker) => {
             const isOwnWorkerProfile =
-              currentUser?.role === "worker" &&
-              String(worker.user || "") ===
-                String(currentUser?._id || "");
+              Boolean(currentWorkerId) &&
+              String(worker._id || "") ===
+                currentWorkerId;
 
             if (isOwnWorkerProfile) {
               return false;
@@ -277,7 +316,7 @@ function FindWorker() {
       return result;
     }, [
       workers,
-      currentUser,
+      currentWorkerId,
       searchTerm,
       selectedSkill,
       selectedLocation,
