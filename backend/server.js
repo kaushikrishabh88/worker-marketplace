@@ -9,6 +9,7 @@ const Application = require("./models/Application");
 const ContactMessage = require("./models/ContactMessage");
 const Review = require("./models/Review");
 const SavedWorker = require("./models/SavedWorker");
+const AdminMessage = require("./models/AdminMessage");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -237,7 +238,7 @@ app.use(express.json());
    Authentication Middleware
 ========================================================= */
 
-function authenticateUser(req, res, next) {
+async function authenticateUser(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -257,16 +258,50 @@ function authenticateUser(req, res, next) {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET,
+    );
+
+    const account = await User.findById(
+      decoded.userId,
+    ).select(
+      "_id role accountStatus suspensionReason",
+    );
+
+    if (!account) {
+      return res.status(401).json({
+        success: false,
+        message: "User account no longer exists.",
+      });
+    }
+
+    if (
+      account.role !== "admin" &&
+      account.accountStatus === "suspended"
+    ) {
+      return res.status(403).json({
+        success: false,
+        accountSuspended: true,
+        message:
+          "Your WorkMate account has been suspended by an administrator.",
+        reason:
+          account.suspensionReason ||
+          "Please contact WorkMate support for more information.",
+      });
+    }
 
     req.user = {
-      userId: decoded.userId,
-      role: decoded.role,
+      userId: account._id,
+      role: account.role,
     };
 
     next();
   } catch (error) {
-    console.error("Authentication error:", error.message);
+    console.error(
+      "Authentication error:",
+      error.message,
+    );
 
     return res.status(401).json({
       success: false,
@@ -497,6 +532,507 @@ Message ID: ${contactMessage._id}
 });
 
 /* =========================================================
+   ADMIN - SEND USER MESSAGE
+   Worker / Employer Only
+========================================================= */
+
+app.post(
+  "/api/admin/users/:id/messages",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type, title, message } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID.",
+        });
+      }
+
+      const targetUser = await User.findById(id);
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User account not found.",
+        });
+      }
+
+      if (targetUser.role === "admin") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Admin accounts cannot receive moderation messages here.",
+        });
+      }
+
+      const allowedTypes = [
+        "greeting",
+        "achievement",
+        "notice",
+        "warning",
+        "account-action",
+      ];
+
+      if (!allowedTypes.includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid admin message type.",
+        });
+      }
+
+      const cleanTitle =
+        typeof title === "string"
+          ? title.trim()
+          : "";
+
+      const cleanMessage =
+        typeof message === "string"
+          ? message.trim()
+          : "";
+
+      if (!cleanTitle || !cleanMessage) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Message title and content are required.",
+        });
+      }
+
+      if (
+        cleanTitle.length > 120 ||
+        cleanMessage.length > 2000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin message is too long.",
+        });
+      }
+
+      const adminMessage =
+        await AdminMessage.create({
+          recipient: targetUser._id,
+          sentBy: req.user.userId,
+          type,
+          title: cleanTitle,
+          message: cleanMessage,
+        });
+
+      return res.status(201).json({
+        success: true,
+        message: "Admin message sent successfully.",
+        adminMessage,
+      });
+    } catch (error) {
+      console.error(
+        "Send admin message error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to send admin message.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   USER - GET ADMIN MESSAGES
+========================================================= */
+
+app.get(
+  "/api/admin-messages/me",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const messages = await AdminMessage.find({
+        recipient: req.user.userId,
+      })
+        .populate("sentBy", "name role")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const unreadCount = messages.filter(
+        (message) => !message.read,
+      ).length;
+
+      return res.status(200).json({
+        success: true,
+        count: messages.length,
+        unreadCount,
+        messages,
+      });
+    } catch (error) {
+      console.error(
+        "Fetch admin messages error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to load admin messages.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   USER - MARK ADMIN MESSAGE READ
+========================================================= */
+
+app.patch(
+  "/api/admin-messages/:id/read",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid message ID.",
+        });
+      }
+
+      const adminMessage =
+        await AdminMessage.findOne({
+          _id: id,
+          recipient: req.user.userId,
+        });
+
+      if (!adminMessage) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin message not found.",
+        });
+      }
+
+      if (!adminMessage.read) {
+        adminMessage.read = true;
+        adminMessage.readAt = new Date();
+
+        await adminMessage.save();
+      }
+
+      return res.status(200).json({
+        success: true,
+        adminMessage,
+      });
+    } catch (error) {
+      console.error(
+        "Read admin message error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to update admin message.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   ADMIN - SUSPEND / UNSUSPEND USER
+========================================================= */
+
+app.patch(
+  "/api/admin/users/:id/suspension",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { suspended, reason } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID.",
+        });
+      }
+
+      if (typeof suspended !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Suspended must be true or false.",
+        });
+      }
+
+      const targetUser = await User.findById(id);
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User account not found.",
+        });
+      }
+
+      if (targetUser.role === "admin") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Admin accounts cannot be suspended.",
+        });
+      }
+
+      const cleanReason =
+        typeof reason === "string"
+          ? reason.trim()
+          : "";
+
+      if (suspended && cleanReason.length < 5) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please provide a clear suspension reason.",
+        });
+      }
+
+      targetUser.accountStatus =
+        suspended ? "suspended" : "active";
+
+      targetUser.suspensionReason =
+        suspended ? cleanReason : "";
+
+      targetUser.suspendedAt =
+        suspended ? new Date() : null;
+
+      targetUser.suspendedBy =
+        suspended ? req.user.userId : null;
+
+      await targetUser.save();
+
+      await AdminMessage.create({
+        recipient: targetUser._id,
+        sentBy: req.user.userId,
+        type: "account-action",
+        title: suspended
+          ? "Your WorkMate account has been suspended"
+          : "Your WorkMate account has been restored",
+        message: suspended
+          ? `Your account has been suspended. Reason: ${cleanReason}`
+          : "Your WorkMate account has been restored and is active again.",
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: suspended
+          ? "Account suspended successfully."
+          : "Account restored successfully.",
+        user: {
+          _id: targetUser._id,
+          role: targetUser.role,
+          accountStatus:
+            targetUser.accountStatus,
+          suspensionReason:
+            targetUser.suspensionReason,
+          suspendedAt:
+            targetUser.suspendedAt,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Admin suspension error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to update account status.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   ADMIN - PERMANENTLY DELETE USER
+   Worker / Employer Only
+========================================================= */
+
+app.delete(
+  "/api/admin/users/:id",
+  authenticateUser,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, confirmation } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID.",
+        });
+      }
+
+      if (confirmation !== "DELETE") {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Type "DELETE" to confirm permanent account deletion.',
+        });
+      }
+
+      const cleanReason =
+        typeof reason === "string"
+          ? reason.trim()
+          : "";
+
+      if (cleanReason.length < 5) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please provide a clear deletion reason.",
+        });
+      }
+
+      const targetUser = await User.findById(id);
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User account not found.",
+        });
+      }
+
+      if (targetUser.role === "admin") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Admin accounts cannot be deleted here.",
+        });
+      }
+
+      const userId = targetUser._id;
+
+      if (targetUser.role === "worker") {
+        const workerProfiles =
+          await Worker.find({
+            user: userId,
+          }).select("_id");
+
+        const workerProfileIds =
+          workerProfiles.map(
+            (worker) => worker._id,
+          );
+
+        await Application.deleteMany({
+          worker: userId,
+        });
+
+        await ContactRequest.deleteMany({
+          $or: [
+            {
+              workerUser: userId,
+            },
+            ...(workerProfileIds.length > 0
+              ? [
+                  {
+                    worker: {
+                      $in: workerProfileIds,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        });
+
+        if (workerProfileIds.length > 0) {
+          await Review.deleteMany({
+            worker: {
+              $in: workerProfileIds,
+            },
+          });
+
+          await SavedWorker.deleteMany({
+            worker: {
+              $in: workerProfileIds,
+            },
+          });
+        }
+
+        await Worker.deleteMany({
+          user: userId,
+        });
+      }
+
+      if (targetUser.role === "employer") {
+        const employerJobs =
+          await Job.find({
+            employer: userId,
+          }).select("_id");
+
+        const jobIds = employerJobs.map(
+          (job) => job._id,
+        );
+
+        if (jobIds.length > 0) {
+          await Application.deleteMany({
+            job: {
+              $in: jobIds,
+            },
+          });
+        }
+
+        await Job.deleteMany({
+          employer: userId,
+        });
+
+        await ContactRequest.deleteMany({
+          employer: userId,
+        });
+
+        await Review.deleteMany({
+          employer: userId,
+        });
+
+        await SavedWorker.deleteMany({
+          employer: userId,
+        });
+      }
+
+      await PasswordResetToken.deleteMany({
+        user: userId,
+      });
+
+      await AdminMessage.deleteMany({
+        recipient: userId,
+      });
+
+      await User.deleteOne({
+        _id: userId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Account permanently deleted by administrator.",
+      });
+    } catch (error) {
+      console.error(
+        "Admin delete account error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to permanently delete account.",
+      });
+    }
+  },
+);
+
+/* =========================================================
    ADMIN - GET WORKERS
    Admin Only
 ========================================================= */
@@ -511,7 +1047,7 @@ app.get(
         role: "worker",
       })
         .select(
-          "name email emailVerified role avatarFileId phone createdAt updatedAt"
+          "name email emailVerified role accountStatus suspensionReason suspendedAt suspendedBy avatarFileId phone createdAt updatedAt"
         )
         .sort({ createdAt: -1 })
         .lean();
@@ -567,7 +1103,7 @@ app.get(
         role: "employer",
       })
         .select(
-          "name email emailVerified role avatarFileId phone businessName location aboutBusiness createdAt updatedAt"
+          "name email emailVerified role accountStatus suspensionReason suspendedAt suspendedBy avatarFileId phone businessName location aboutBusiness createdAt updatedAt"
         )
         .sort({ createdAt: -1 })
         .lean();
@@ -1168,6 +1704,21 @@ app.post("/api/auth/login", async (req, res) => {
         resendAvailable: true,
 
         email: user.email,
+      });
+    }
+
+    if (
+      user.role !== "admin" &&
+      user.accountStatus === "suspended"
+    ) {
+      return res.status(403).json({
+        success: false,
+        accountSuspended: true,
+        message:
+          "Your WorkMate account has been suspended by an administrator.",
+        reason:
+          user.suspensionReason ||
+          "Please contact WorkMate support for more information.",
       });
     }
 

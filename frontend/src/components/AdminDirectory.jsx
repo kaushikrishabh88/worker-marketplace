@@ -35,6 +35,30 @@ function AdminDirectory({ type }) {
   const [selectedEmployer, setSelectedEmployer] =
     useState(null);
 
+  const [moderationTarget, setModerationTarget] =
+    useState(null);
+
+  const [moderationMode, setModerationMode] =
+    useState("");
+
+  const [moderationLoading, setModerationLoading] =
+    useState(false);
+
+  const [messageForm, setMessageForm] = useState({
+    type: "notice",
+    title: "",
+    message: "",
+  });
+
+  const [suspensionReason, setSuspensionReason] =
+    useState("");
+
+  const [deleteReason, setDeleteReason] =
+    useState("");
+
+  const [deleteConfirmation, setDeleteConfirmation] =
+    useState("");
+
   const isWorkers = type === "workers";
 
   useEffect(() => {
@@ -138,6 +162,204 @@ function AdminDirectory({ type }) {
       return haystack.includes(query);
     });
   }, [items, search]);
+
+  const openModeration = (item, mode) => {
+    setModerationTarget(item);
+    setModerationMode(mode);
+
+    setMessageForm({
+      type: "notice",
+      title: "",
+      message: "",
+    });
+
+    setSuspensionReason("");
+    setDeleteReason("");
+    setDeleteConfirmation("");
+  };
+
+  const closeModeration = () => {
+    if (moderationLoading) {
+      return;
+    }
+
+    setModerationTarget(null);
+    setModerationMode("");
+    setSuspensionReason("");
+    setDeleteReason("");
+    setDeleteConfirmation("");
+  };
+
+  const handleSendMessage = async (event) => {
+    event.preventDefault();
+
+    if (!moderationTarget?._id) {
+      return;
+    }
+
+    try {
+      setModerationLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/api/admin/users/${moderationTarget._id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(messageForm),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to send admin message.",
+        );
+      }
+
+      toast.success("Message sent successfully.");
+      closeModeration();
+    } catch (error) {
+      console.error("Admin send message error:", error);
+
+      toast.error(
+        error.message || "Unable to send message.",
+      );
+    } finally {
+      setModerationLoading(false);
+    }
+  };
+
+  const handleSuspension = async (suspended) => {
+    if (!moderationTarget?._id) {
+      return;
+    }
+
+    try {
+      setModerationLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/api/admin/users/${moderationTarget._id}/suspension`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            suspended,
+            reason: suspended
+              ? suspensionReason
+              : "",
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to update account status.",
+        );
+      }
+
+      setItems((previous) =>
+        previous.map((item) =>
+          item._id === moderationTarget._id
+            ? {
+                ...item,
+                accountStatus:
+                  data.user?.accountStatus ||
+                  (suspended
+                    ? "suspended"
+                    : "active"),
+                suspensionReason:
+                  data.user?.suspensionReason || "",
+                suspendedAt:
+                  data.user?.suspendedAt || null,
+              }
+            : item,
+        ),
+      );
+
+      toast.success(data.message);
+      closeModeration();
+    } catch (error) {
+      console.error(
+        "Admin suspension action error:",
+        error,
+      );
+
+      toast.error(
+        error.message ||
+          "Unable to update account status.",
+      );
+    } finally {
+      setModerationLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (event) => {
+    event.preventDefault();
+
+    if (!moderationTarget?._id) {
+      return;
+    }
+
+    try {
+      setModerationLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/api/admin/users/${moderationTarget._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reason: deleteReason,
+            confirmation: deleteConfirmation,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to permanently delete account.",
+        );
+      }
+
+      setItems((previous) =>
+        previous.filter(
+          (item) =>
+            item._id !== moderationTarget._id,
+        ),
+      );
+
+      toast.success(data.message);
+      closeModeration();
+    } catch (error) {
+      console.error(
+        "Admin delete account error:",
+        error,
+      );
+
+      toast.error(
+        error.message ||
+          "Unable to permanently delete account.",
+      );
+    } finally {
+      setModerationLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("workmateToken");
@@ -396,6 +618,18 @@ function AdminDirectory({ type }) {
                   <div className="admin-directory-badges">
                     <span
                       className={
+                        item.accountStatus === "suspended"
+                          ? "suspended"
+                          : "active-account"
+                      }
+                    >
+                      {item.accountStatus === "suspended"
+                        ? "⛔ Suspended"
+                        : "● Active"}
+                    </span>
+
+                    <span
+                      className={
                         item.emailVerified
                           ? "verified"
                           : "pending"
@@ -490,41 +724,334 @@ function AdminDirectory({ type }) {
                     </p>
                   </div>
 
-                  {isWorkers ? (
+                  <div className="admin-directory-actions">
+                    {isWorkers ? (
+                      <button
+                        type="button"
+                        className="admin-directory-primary"
+                        disabled={!profile?._id}
+                        onClick={() =>
+                          profile?._id &&
+                          navigate(
+                            `/workers/${profile._id}`,
+                          )
+                        }
+                      >
+                        {profile?._id
+                          ? "View Profile"
+                          : "No Worker Profile"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="admin-directory-primary"
+                        onClick={() =>
+                          setSelectedEmployer(item)
+                        }
+                      >
+                        View Details
+                      </button>
+                    )}
+
                     <button
                       type="button"
-                      className="admin-directory-primary"
-                      disabled={!profile?._id}
+                      className="admin-directory-message"
                       onClick={() =>
-                        profile?._id &&
-                        navigate(
-                          `/workers/${profile._id}`,
-                        )
+                        openModeration(item, "message")
                       }
                     >
-                      {profile?._id
-                        ? "View Full Profile →"
-                        : "Worker Profile Not Created"}
+                      ✉ Message
                     </button>
-                  ) : (
+
                     <button
                       type="button"
-                      className="admin-directory-primary"
+                      className={
+                        item.accountStatus === "suspended"
+                          ? "admin-directory-restore"
+                          : "admin-directory-suspend"
+                      }
                       onClick={() =>
-                        setSelectedEmployer(
+                        openModeration(
                           item,
+                          item.accountStatus === "suspended"
+                            ? "restore"
+                            : "suspend",
                         )
                       }
                     >
-                      View Details →
+                      {item.accountStatus === "suspended"
+                        ? "✓ Restore"
+                        : "⏸ Suspend"}
                     </button>
-                  )}
+
+                    <button
+                      type="button"
+                      className="admin-directory-delete"
+                      onClick={() =>
+                        openModeration(item, "delete")
+                      }
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
                 </article>
               );
             })}
           </div>
         )}
       </main>
+
+      {moderationTarget && (
+        <div
+          className="admin-profile-overlay"
+          onClick={closeModeration}
+        >
+          <div
+            className="admin-profile-modal admin-moderation-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <button
+              type="button"
+              className="admin-profile-close"
+              onClick={closeModeration}
+              disabled={moderationLoading}
+            >
+              ×
+            </button>
+
+            <span className="admin-profile-label">
+              ADMIN ACTION
+            </span>
+
+            <h2>
+              {moderationMode === "message"
+                ? `Message ${moderationTarget.name}`
+                : moderationMode === "suspend"
+                  ? `Suspend ${moderationTarget.name}`
+                  : moderationMode === "restore"
+                    ? `Restore ${moderationTarget.name}`
+                    : `Delete ${moderationTarget.name}`}
+            </h2>
+
+            {moderationMode === "message" && (
+              <form
+                className="admin-moderation-form"
+                onSubmit={handleSendMessage}
+              >
+                <label>
+                  <span>Message Type</span>
+
+                  <select
+                    value={messageForm.type}
+                    onChange={(event) =>
+                      setMessageForm(
+                        (previous) => ({
+                          ...previous,
+                          type: event.target.value,
+                        }),
+                      )
+                    }
+                  >
+                    <option value="greeting">
+                      Greeting
+                    </option>
+
+                    <option value="achievement">
+                      Achievement
+                    </option>
+
+                    <option value="notice">
+                      General Notice
+                    </option>
+
+                    <option value="warning">
+                      Guideline Warning
+                    </option>
+
+                    <option value="account-action">
+                      Account Action
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Title</span>
+
+                  <input
+                    type="text"
+                    maxLength="120"
+                    value={messageForm.title}
+                    onChange={(event) =>
+                      setMessageForm(
+                        (previous) => ({
+                          ...previous,
+                          title: event.target.value,
+                        }),
+                      )
+                    }
+                    placeholder="Example: Congratulations!"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>Message</span>
+
+                  <textarea
+                    rows="6"
+                    maxLength="2000"
+                    value={messageForm.message}
+                    onChange={(event) =>
+                      setMessageForm(
+                        (previous) => ({
+                          ...previous,
+                          message: event.target.value,
+                        }),
+                      )
+                    }
+                    placeholder="Write the message shown to this user..."
+                    required
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="admin-moderation-submit"
+                  disabled={moderationLoading}
+                >
+                  {moderationLoading
+                    ? "Sending..."
+                    : "Send Message"}
+                </button>
+              </form>
+            )}
+
+            {moderationMode === "suspend" && (
+              <div className="admin-moderation-form">
+                <p className="admin-moderation-warning">
+                  Suspension blocks this account from
+                  logging in and using protected WorkMate
+                  features. Account data is not deleted.
+                </p>
+
+                <label>
+                  <span>Suspension Reason</span>
+
+                  <textarea
+                    rows="5"
+                    maxLength="500"
+                    value={suspensionReason}
+                    onChange={(event) =>
+                      setSuspensionReason(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Explain which guideline was violated..."
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="admin-moderation-danger"
+                  disabled={moderationLoading}
+                  onClick={() =>
+                    handleSuspension(true)
+                  }
+                >
+                  {moderationLoading
+                    ? "Suspending..."
+                    : "Suspend Account"}
+                </button>
+              </div>
+            )}
+
+            {moderationMode === "restore" && (
+              <div className="admin-moderation-form">
+                <p>
+                  This will restore access to the
+                  WorkMate account.
+                </p>
+
+                <button
+                  type="button"
+                  className="admin-moderation-submit"
+                  disabled={moderationLoading}
+                  onClick={() =>
+                    handleSuspension(false)
+                  }
+                >
+                  {moderationLoading
+                    ? "Restoring..."
+                    : "Restore Account"}
+                </button>
+              </div>
+            )}
+
+            {moderationMode === "delete" && (
+              <form
+                className="admin-moderation-form"
+                onSubmit={handleDeleteAccount}
+              >
+                <p className="admin-moderation-warning">
+                  This permanently deletes the account
+                  and related marketplace data. This
+                  action cannot be undone.
+                </p>
+
+                <label>
+                  <span>Deletion Reason</span>
+
+                  <textarea
+                    rows="5"
+                    maxLength="500"
+                    value={deleteReason}
+                    onChange={(event) =>
+                      setDeleteReason(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Explain why this account must be permanently deleted..."
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Type DELETE to confirm
+                  </span>
+
+                  <input
+                    type="text"
+                    value={deleteConfirmation}
+                    onChange={(event) =>
+                      setDeleteConfirmation(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="DELETE"
+                    required
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="admin-moderation-danger"
+                  disabled={
+                    moderationLoading ||
+                    deleteConfirmation !== "DELETE"
+                  }
+                >
+                  {moderationLoading
+                    ? "Deleting..."
+                    : "Permanently Delete Account"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {selectedEmployer && (
         <div

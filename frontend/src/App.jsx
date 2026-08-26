@@ -25,6 +25,7 @@ import ContactUs from "./components/ContactUs";
 import AdminLogin from "./components/AdminLogin";
 import AdminMessages from "./components/AdminMessages";
 import AdminDirectory from "./components/AdminDirectory";
+import AdminInbox from "./components/AdminInbox";
 import VerifyEmail from "./components/VerifyEmail";
 import ResetPassword from "./components/ResetPassword";
 
@@ -613,6 +614,10 @@ function HomePage() {
                 ♥ Saved Workers
               </a>
 
+              <a href="#admin-messages">
+                🔔 Admin Messages
+              </a>
+
               <a href="#sent-requests">
                 {t("myRequests")}
 
@@ -656,6 +661,10 @@ function HomePage() {
                   user={user}
                   type="applications"
                 />
+              </a>
+
+              <a href="#admin-messages">
+                🔔 Admin Messages
               </a>
 
               <a href="#received-requests">
@@ -2014,6 +2023,8 @@ function HomePage() {
             <FindWorker />
 
             <SavedWorkers />
+
+            <AdminInbox />
 
             <SentRequests />
 

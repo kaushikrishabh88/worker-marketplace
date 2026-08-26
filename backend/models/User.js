@@ -54,6 +54,30 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    accountStatus: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
+
+    suspensionReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     avatarFileId: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
