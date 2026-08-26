@@ -2049,6 +2049,8 @@ function HomePage() {
 
             <ReceivedRequests />
 
+            <AdminInbox />
+
             <WorkerRegistration />
           </>
         )}
