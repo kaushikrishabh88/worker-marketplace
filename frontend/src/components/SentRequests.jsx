@@ -521,7 +521,7 @@ function SentRequests() {
 
                     <div>
                       <span>
-                        📞 Phone
+                        📞 Your Contact Number
                       </span>
 
                       <strong>
@@ -558,6 +558,83 @@ function SentRequests() {
                       statusMessage
                     }
                   </div>
+
+                  {status ===
+                    "accepted" && (
+                    <div className="sent-worker-contact-panel">
+                      <div className="sent-worker-contact-heading">
+                        <span>
+                          WORKER CONTACT
+                        </span>
+
+                        <h4>
+                          Continue the hiring conversation
+                        </h4>
+
+                        <p>
+                          The worker accepted your request. Contact them directly to discuss work timing, payment, joining details and next steps.
+                        </p>
+                      </div>
+
+                      <div className="sent-worker-contact-details">
+                        <div>
+                          <span>
+                            📞 Worker Phone
+                          </span>
+
+                          <strong>
+                            {request.worker
+                              ?.phone ||
+                              "Not available"}
+                          </strong>
+                        </div>
+
+                        {request.workerUser
+                          ?.email && (
+                          <div>
+                            <span>
+                              ✉️ Worker Email
+                            </span>
+
+                            <strong>
+                              {
+                                request
+                                  .workerUser
+                                  .email
+                              }
+                            </strong>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="sent-worker-contact-actions">
+                        {request.worker
+                          ?.phone && (
+                          <a
+                            className="sent-worker-call-btn"
+                            href={`tel:${String(
+                              request.worker.phone,
+                            ).replace(
+                              /[^+\d]/g,
+                              "",
+                            )}`}
+                          >
+                            📞 Call Worker
+                          </a>
+                        )}
+
+                        {request.workerUser
+                          ?.email && (
+                          <a
+                            className="sent-worker-email-btn"
+                            href={`mailto:${request.workerUser.email}`}
+                          >
+                            ✉️ Email Worker
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {status ===
                     "pending" && (

@@ -5860,6 +5860,131 @@ body,
 }
 
 /* =========================================================
+   ACCEPTED SENT REQUEST - WORKER CONTACT
+========================================================= */
+
+.sent-worker-contact-panel {
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    #f0fdf4,
+    #f8fafc
+  );
+}
+
+.sent-worker-contact-heading > span {
+  color: #15803d;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.sent-worker-contact-heading h4 {
+  margin: 7px 0 0;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.sent-worker-contact-heading p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.sent-worker-contact-details {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.sent-worker-contact-details > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dcfce7;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.sent-worker-contact-details span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sent-worker-contact-details strong {
+  display: block;
+  margin-top: 5px;
+  color: #1e293b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.sent-worker-contact-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sent-worker-contact-actions a {
+  flex: 1;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.sent-worker-call-btn {
+  background: linear-gradient(
+    135deg,
+    #22c55e,
+    #16a34a
+  );
+  color: #ffffff;
+}
+
+.sent-worker-email-btn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.sent-worker-contact-actions a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 22px
+    rgba(15, 23, 42, 0.1);
+}
+
+@media (max-width: 600px) {
+  .sent-worker-contact-details {
+    grid-template-columns: 1fr;
+  }
+
+  .sent-worker-contact-actions {
+    flex-direction: column;
+  }
+
+  .sent-worker-contact-actions a {
+    width: 100%;
+  }
+}
+
+/* =========================================================
    EMPTY STATE
 ========================================================= */
 

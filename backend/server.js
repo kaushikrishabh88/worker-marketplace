@@ -2768,7 +2768,14 @@ app.get("/api/contact-requests/sent", authenticateUser, async (req, res) => {
     const requests = await ContactRequest.find({
       employer: req.user.userId,
     })
-      .populate("worker", "name role location phone emoji avatarFileId")
+      .populate(
+        "worker",
+        "name role location phone emoji avatarFileId",
+      )
+      .populate(
+        "workerUser",
+        "name email",
+      )
       .sort({
         createdAt: -1,
       });
