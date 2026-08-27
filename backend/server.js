@@ -2481,8 +2481,15 @@ app.post("/api/contact-worker", authenticateUser, async (req, res) => {
       });
     }
 
-    const { workerId, workerName, name, phone, workLocation, message } =
-      req.body;
+    const {
+      workerId,
+      workerName,
+      name,
+      phone,
+      workLocation,
+      message,
+      jobId,
+    } = req.body;
 
     if (
       !workerId ||
@@ -2503,6 +2510,36 @@ app.post("/api/contact-worker", authenticateUser, async (req, res) => {
         success: false,
         message: "Invalid worker ID.",
       });
+    }
+
+    let selectedJob = null;
+
+    if (jobId) {
+      if (!mongoose.Types.ObjectId.isValid(jobId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid job ID.",
+        });
+      }
+
+      selectedJob = await Job.findOne({
+        _id: jobId,
+        employer: req.user.userId,
+      });
+
+      if (!selectedJob) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected job was not found in your job posts.",
+        });
+      }
+
+      if (selectedJob.status !== "open") {
+        return res.status(409).json({
+          success: false,
+          message: "Only open jobs can be linked to a new worker request.",
+        });
+      }
     }
 
     const worker = await Worker.findById(workerId);
@@ -2546,6 +2583,7 @@ app.post("/api/contact-worker", authenticateUser, async (req, res) => {
       worker: worker._id,
       workerUser: worker.user,
       employer: req.user.userId,
+      job: selectedJob?._id || null,
       employerName: name.trim(),
       phone: phone.trim(),
 
@@ -2637,7 +2675,7 @@ app.patch("/api/contact-requests/:id", authenticateUser, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { phone, workLocation, message } = req.body;
+    const { phone, workLocation, message, jobId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -2672,11 +2710,47 @@ app.patch("/api/contact-requests/:id", authenticateUser, async (req, res) => {
       });
     }
 
+    let selectedJob = null;
+
+    if (jobId) {
+      if (!mongoose.Types.ObjectId.isValid(jobId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid job ID.",
+        });
+      }
+
+      selectedJob = await Job.findOne({
+        _id: jobId,
+        employer: req.user.userId,
+      });
+
+      if (!selectedJob) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected job was not found in your job posts.",
+        });
+      }
+
+      if (selectedJob.status !== "open") {
+        return res.status(409).json({
+          success: false,
+          message: "Only open jobs can be linked to a pending request.",
+        });
+      }
+    }
+
     request.phone = phone.trim();
     request.workLocation = workLocation.trim();
     request.message = message.trim();
+    request.job = selectedJob?._id || null;
 
     await request.save();
+
+    await request.populate(
+      "job",
+      "title skill location salary jobType status",
+    );
 
     res.status(200).json({
       success: true,
@@ -2776,6 +2850,10 @@ app.get("/api/contact-requests/sent", authenticateUser, async (req, res) => {
         "workerUser",
         "name email",
       )
+      .populate(
+        "job",
+        "title skill location salary jobType status",
+      )
       .sort({
         createdAt: -1,
       });
@@ -2814,6 +2892,10 @@ app.get("/api/contact-requests/my", authenticateUser, async (req, res) => {
     })
       .populate("employer", "name email avatarFileId")
       .populate("worker", "name role location avatarFileId")
+      .populate(
+        "job",
+        "title skill location salary jobType status",
+      )
       .sort({
         createdAt: -1,
       });

@@ -338,6 +338,19 @@ function ReceivedRequests() {
                       INFO
                   ========================================= */}
 
+                  <div className="request-job-context">
+                    <span>
+                      {request.job
+                        ? "REGARDING JOB"
+                        : "GENERAL WORK REQUEST"}
+                    </span>
+
+                    <strong>
+                      {request.job?.title ||
+                        "Not linked to a specific job"}
+                    </strong>
+                  </div>
+
                   <div className="request-info">
                     <div>
                       <span>

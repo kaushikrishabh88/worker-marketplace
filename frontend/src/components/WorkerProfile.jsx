@@ -53,6 +53,9 @@ function WorkerProfile() {
 
   const [contactStatusLoading, setContactStatusLoading] = useState(false);
 
+  const [employerJobs, setEmployerJobs] = useState([]);
+  const [employerJobsLoading, setEmployerJobsLoading] = useState(false);
+
   /* =========================================================
      SAVED WORKER STATE
   ========================================================= */
@@ -147,6 +150,53 @@ function WorkerProfile() {
   /* =========================================================
    FETCH CURRENT CONTACT REQUEST STATUS
 ========================================================= */
+
+  useEffect(() => {
+    if (!token || loggedInUser?.role !== "employer") {
+      setEmployerJobs([]);
+      return;
+    }
+
+    const fetchEmployerJobs = async () => {
+      try {
+        setEmployerJobsLoading(true);
+
+        const response = await fetch(
+          `${API_URL}/api/jobs/my`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to load your jobs.",
+          );
+        }
+
+        setEmployerJobs(
+          (data.jobs || []).filter(
+            (job) => job.status === "open",
+          ),
+        );
+      } catch (error) {
+        console.error(
+          "Fetch employer jobs for contact request error:",
+          error,
+        );
+
+        setEmployerJobs([]);
+      } finally {
+        setEmployerJobsLoading(false);
+      }
+    };
+
+    fetchEmployerJobs();
+  }, [token, loggedInUser?.role]);
 
   useEffect(() => {
     if (!token || !id || loggedInUser?.role !== "employer") {
@@ -920,6 +970,9 @@ function WorkerProfile() {
       workLocation: form.workLocation.value.trim(),
 
       message: form.message.value.trim(),
+
+      jobId:
+        form.jobId.value.trim() || null,
     };
 
     try {
@@ -1698,6 +1751,34 @@ function WorkerProfile() {
                       placeholder="Enter mobile number"
                       required
                     />
+                  </label>
+
+                  <label>
+                    Request For
+                    <select
+                      name="jobId"
+                      defaultValue=""
+                      disabled={employerJobsLoading}
+                    >
+                      <option value="">
+                        General Work Request
+                      </option>
+
+                      {employerJobs.map((job) => (
+                        <option
+                          key={job._id}
+                          value={job._id}
+                        >
+                          {job.title}
+                        </option>
+                      ))}
+                    </select>
+
+                    <small>
+                      {employerJobsLoading
+                        ? "Loading your open jobs..."
+                        : "Choose a specific open job, or leave this as a general work request."}
+                    </small>
                   </label>
 
                   <label>

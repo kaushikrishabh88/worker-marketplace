@@ -16954,3 +16954,77 @@ main,
 .auth-suspension-support-btn:active {
   transform: translateY(0);
 }
+
+
+/* =========================================================
+   CONTACT REQUEST - JOB CONTEXT
+========================================================= */
+
+.sent-request-job-context,
+.request-job-context {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  border-radius: 13px;
+  background: linear-gradient(
+    135deg,
+    rgba(238, 242, 255, 0.9),
+    rgba(240, 249, 255, 0.9)
+  );
+}
+
+.sent-request-job-context span,
+.request-job-context span {
+  display: block;
+  color: #6366f1;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+}
+
+.sent-request-job-context strong,
+.request-job-context strong {
+  display: block;
+  margin-top: 6px;
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1.5;
+  text-transform: capitalize;
+  word-break: break-word;
+}
+
+/* =========================================================
+   SENT REQUEST - JOB SELECTOR
+========================================================= */
+
+.sent-request-edit-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 11px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.sent-request-edit-form select:focus {
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.sent-request-edit-form select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.sent-request-edit-help {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}

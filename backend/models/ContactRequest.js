@@ -20,6 +20,12 @@ const contactRequestSchema = new mongoose.Schema(
       required: true,
     },
 
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
+      default: null,
+    },
+
     employerName: {
       type: String,
       required: true,

@@ -19,10 +19,19 @@ function SentRequests() {
 
   const [editData, setEditData] =
     useState({
+      jobId: "",
       phone: "",
       workLocation: "",
       message: "",
     });
+
+  const [employerJobs, setEmployerJobs] =
+    useState([]);
+
+  const [
+    employerJobsLoading,
+    setEmployerJobsLoading,
+  ] = useState(Boolean(token));
 
   const [
     savingRequestId,
@@ -108,6 +117,78 @@ function SentRequests() {
   }, [token]);
 
   /* =========================================================
+     FETCH EMPLOYER JOBS FOR REQUEST EDITING
+  ========================================================= */
+
+  useEffect(() => {
+    if (!token) {
+      setEmployerJobs([]);
+      setEmployerJobsLoading(false);
+      return;
+    }
+
+    const fetchEmployerJobs =
+      async () => {
+        try {
+          setEmployerJobsLoading(true);
+
+          const response =
+            await fetch(
+              `${API_URL}/api/jobs/my`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                },
+              },
+            );
+
+          let data = {};
+
+          try {
+            data =
+              await response.json();
+          } catch {
+            data = {};
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              data.message ||
+                "Failed to load jobs.",
+            );
+          }
+
+          const jobs =
+            data.jobs ||
+            data ||
+            [];
+
+          setEmployerJobs(
+            Array.isArray(jobs)
+              ? jobs.filter(
+                  (job) =>
+                    job.status ===
+                    "open",
+                )
+              : [],
+          );
+        } catch (error) {
+          console.error(
+            "Fetch employer jobs error:",
+            error,
+          );
+
+          setEmployerJobs([]);
+        } finally {
+          setEmployerJobsLoading(false);
+        }
+      };
+
+    fetchEmployerJobs();
+  }, [token]);
+
+  /* =========================================================
      OPEN EDIT REQUEST
   ========================================================= */
 
@@ -126,6 +207,11 @@ function SentRequests() {
     );
 
     setEditData({
+      jobId:
+        request.job?._id ||
+        request.job ||
+        "",
+
       phone:
         request.phone || "",
 
@@ -148,6 +234,7 @@ function SentRequests() {
     );
 
     setEditData({
+      jobId: "",
       phone: "",
       workLocation: "",
       message: "",
@@ -214,6 +301,10 @@ function SentRequests() {
 
             body:
               JSON.stringify({
+                jobId:
+                  editData.jobId ||
+                  null,
+
                 phone:
                   editData.phone.trim(),
 
@@ -507,6 +598,19 @@ function SentRequests() {
                     </div>
                   </div>
 
+                  <div className="sent-request-job-context">
+                    <span>
+                      {request.job
+                        ? "REGARDING JOB"
+                        : "GENERAL WORK REQUEST"}
+                    </span>
+
+                    <strong>
+                      {request.job?.title ||
+                        "Not linked to a specific job"}
+                    </strong>
+                  </div>
+
                   <div className="sent-request-info">
                     <div>
                       <span>
@@ -683,6 +787,48 @@ function SentRequests() {
                     editingRequestId ===
                       request._id && (
                       <div className="sent-request-edit-form">
+                        <label>
+                          <span>
+                            Request For
+                          </span>
+
+                          <select
+                            name="jobId"
+                            value={
+                              editData.jobId
+                            }
+                            onChange={
+                              handleEditChange
+                            }
+                            disabled={
+                              savingRequestId ===
+                                request._id ||
+                              employerJobsLoading
+                            }
+                          >
+                            <option value="">
+                              General Work Request
+                            </option>
+
+                            {employerJobs.map(
+                              (job) => (
+                                <option
+                                  key={job._id}
+                                  value={job._id}
+                                >
+                                  {job.title}
+                                </option>
+                              ),
+                            )}
+                          </select>
+
+                          {employerJobsLoading && (
+                            <small className="sent-request-edit-help">
+                              Loading your open jobs...
+                            </small>
+                          )}
+                        </label>
+
                         <label>
                           <span>
                             Phone Number
