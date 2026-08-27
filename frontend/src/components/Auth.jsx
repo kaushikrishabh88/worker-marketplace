@@ -14,6 +14,51 @@ function Auth() {
 
   const [suspensionNotice, setSuspensionNotice] = useState(null);
 
+  /* =========================================================
+     RESTORE LIVE SUSPENSION NOTICE
+  ========================================================= */
+
+  useEffect(() => {
+    const params = new URLSearchParams(
+      window.location.search,
+    );
+
+    if (params.get("suspended") !== "1") {
+      return;
+    }
+
+    const storedNotice = sessionStorage.getItem(
+      "workmateSuspensionNotice",
+    );
+
+    if (!storedNotice) {
+      return;
+    }
+
+    try {
+      const notice = JSON.parse(storedNotice);
+
+      setSuspensionNotice({
+        message:
+          notice.message ||
+          "Your WorkMate account has been suspended by an administrator.",
+        reason:
+          notice.reason ||
+          "Please contact WorkMate support for more information.",
+      });
+    } catch (error) {
+      console.error(
+        "Restore suspension notice error:",
+        error,
+      );
+    } finally {
+      sessionStorage.removeItem(
+        "workmateSuspensionNotice",
+      );
+    }
+  }, []);
+
+
   const [loginRole, setLoginRole] = useState("employer");
 
   const [formData, setFormData] = useState({

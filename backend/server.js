@@ -326,6 +326,22 @@ function requireAdmin(req, res, next) {
 }
 
 /* =========================================================
+   AUTH - CURRENT SESSION STATUS
+   Used by the frontend to detect account suspension
+========================================================= */
+
+app.get(
+  "/api/auth/session-status",
+  authenticateUser,
+  async (req, res) => {
+    return res.status(200).json({
+      success: true,
+      active: true,
+    });
+  },
+);
+
+/* =========================================================
    WORKER PROFILE VERIFICATION
 ========================================================= */
 

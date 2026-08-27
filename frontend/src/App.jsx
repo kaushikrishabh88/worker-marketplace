@@ -4,7 +4,7 @@ import ToastProvider from "./components/ToastProvider";
 
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import FindWorker from "./components/FindWorker";
 import WorkerRegistration from "./components/WorkerRegistration";
@@ -225,6 +225,173 @@ function HomePage() {
 
     localStorage.removeItem("workmateToken");
   }
+
+  /* =========================================================
+     LIVE ACCOUNT STATUS WATCHER
+     Automatically logs out suspended worker/employer accounts
+  ========================================================= */
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("workmateToken");
+
+    const storedUser =
+      localStorage.getItem("workmateUser");
+
+    if (!token || !storedUser) {
+      return undefined;
+    }
+
+    let sessionUser = null;
+
+    try {
+      sessionUser = JSON.parse(storedUser);
+    } catch {
+      return undefined;
+    }
+
+    if (
+      !sessionUser ||
+      !["worker", "employer"].includes(
+        sessionUser.role,
+      )
+    ) {
+      return undefined;
+    }
+
+    let stopped = false;
+    let checking = false;
+
+    const forceSuspensionLogout = (data) => {
+      if (stopped) {
+        return;
+      }
+
+      stopped = true;
+
+      const suspensionNotice = {
+        message:
+          data?.message ||
+          "Your WorkMate account has been suspended by an administrator.",
+        reason:
+          data?.reason ||
+          "Please contact WorkMate support for more information.",
+      };
+
+      sessionStorage.setItem(
+        "workmateSuspensionNotice",
+        JSON.stringify(suspensionNotice),
+      );
+
+      localStorage.removeItem(
+        "workmateToken",
+      );
+
+      localStorage.removeItem(
+        "workmateUser",
+      );
+
+      window.location.replace(
+        "/auth?suspended=1",
+      );
+    };
+
+    const checkAccountStatus = async () => {
+      if (stopped || checking) {
+        return;
+      }
+
+      checking = true;
+
+      try {
+        const response = await fetch(
+          `${API_URL}/api/auth/session-status`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+            cache: "no-store",
+          },
+        );
+
+        const contentType =
+          response.headers.get(
+            "content-type",
+          ) || "";
+
+        const data =
+          contentType.includes(
+            "application/json",
+          )
+            ? await response.json()
+            : {};
+
+        if (
+          response.status === 403 &&
+          data.accountSuspended
+        ) {
+          forceSuspensionLogout(data);
+        }
+      } catch (error) {
+        console.error(
+          "Account status check error:",
+          error,
+        );
+      } finally {
+        checking = false;
+      }
+    };
+
+    const handleVisibilityCheck = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        checkAccountStatus();
+      }
+    };
+
+    const handleFocusCheck = () => {
+      checkAccountStatus();
+    };
+
+    checkAccountStatus();
+
+    const intervalId =
+      window.setInterval(
+        checkAccountStatus,
+        10000,
+      );
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityCheck,
+    );
+
+    window.addEventListener(
+      "focus",
+      handleFocusCheck,
+    );
+
+    return () => {
+      stopped = true;
+
+      window.clearInterval(
+        intervalId,
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityCheck,
+      );
+
+      window.removeEventListener(
+        "focus",
+        handleFocusCheck,
+      );
+    };
+  }, []);
 
   /* =========================================================
      NAVIGATION
