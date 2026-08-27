@@ -17085,3 +17085,154 @@ main,
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* =========================================================
+   LIVE SUSPENDED ACCOUNT MODAL
+========================================================= */
+
+.workmate-suspension-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.workmate-suspension-modal {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px;
+  border: 1px solid #fecaca;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.3);
+  text-align: center;
+}
+
+.workmate-suspension-icon {
+  margin-bottom: 10px;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.workmate-suspension-modal h2 {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.workmate-suspension-message {
+  margin: 12px auto 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.workmate-suspension-reason {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+  text-align: left;
+}
+
+.workmate-suspension-reason strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workmate-suspension-reason p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.workmate-suspension-help {
+  margin: 17px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.workmate-suspension-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.workmate-suspension-actions button {
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.workmate-suspension-contact {
+  grid-column: 1 / -1;
+  border: 0;
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+.workmate-suspension-contact:hover {
+  background: #991b1b;
+}
+
+.workmate-suspension-close {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.workmate-suspension-logout {
+  border: 1px solid #fecaca;
+  background: #fff7f7;
+  color: #b91c1c;
+}
+
+.workmate-suspension-actions button:focus-visible {
+  outline: 3px solid rgba(185, 28, 28, 0.2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .workmate-suspension-overlay {
+    padding: 14px;
+  }
+
+  .workmate-suspension-modal {
+    padding: 24px 17px;
+    border-radius: 18px;
+  }
+
+  .workmate-suspension-modal h2 {
+    font-size: 22px;
+  }
+
+  .workmate-suspension-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .workmate-suspension-contact {
+    grid-column: auto;
+  }
+}

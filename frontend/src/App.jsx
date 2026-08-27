@@ -43,6 +43,10 @@ function HomePage() {
 
   const [showSettings, setShowSettings] = useState(false);
 
+  const [accountSuspension, setAccountSuspension] = useState(null);
+
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState({
@@ -227,6 +231,41 @@ function HomePage() {
   }
 
   /* =========================================================
+     GLOBAL SUSPENSION RESPONSE LISTENER
+     Reopens suspension modal when a protected API action
+     is rejected because the account is suspended.
+  ========================================================= */
+
+  useEffect(() => {
+    const handleSuspensionResponse = (event) => {
+      const detail = event.detail || {};
+
+      setAccountSuspension({
+        message:
+          detail.message ||
+          "Your WorkMate account has been suspended by an administrator.",
+        reason:
+          detail.reason ||
+          "Please contact WorkMate support for more information.",
+      });
+
+      setShowSuspensionModal(true);
+    };
+
+    window.addEventListener(
+      "workmate:account-suspended",
+      handleSuspensionResponse,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "workmate:account-suspended",
+        handleSuspensionResponse,
+      );
+    };
+  }, []);
+
+  /* =========================================================
      LIVE ACCOUNT STATUS WATCHER
      Automatically logs out suspended worker/employer accounts
   ========================================================= */
@@ -262,12 +301,10 @@ function HomePage() {
     let stopped = false;
     let checking = false;
 
-    const forceSuspensionLogout = (data) => {
+    const handleSuspendedAccount = (data) => {
       if (stopped) {
         return;
       }
-
-      stopped = true;
 
       const suspensionNotice = {
         message:
@@ -278,22 +315,9 @@ function HomePage() {
           "Please contact WorkMate support for more information.",
       };
 
-      sessionStorage.setItem(
-        "workmateSuspensionNotice",
-        JSON.stringify(suspensionNotice),
-      );
+      setAccountSuspension(suspensionNotice);
 
-      localStorage.removeItem(
-        "workmateToken",
-      );
-
-      localStorage.removeItem(
-        "workmateUser",
-      );
-
-      window.location.replace(
-        "/auth?suspended=1",
-      );
+      setShowSuspensionModal(true);
     };
 
     const checkAccountStatus = async () => {
@@ -331,7 +355,7 @@ function HomePage() {
           response.status === 403 &&
           data.accountSuspended
         ) {
-          forceSuspensionLogout(data);
+          handleSuspendedAccount(data);
         }
       } catch (error) {
         console.error(
@@ -2304,6 +2328,120 @@ function HomePage() {
           <ContactUs />
         )}
       </main>
+
+      {showSuspensionModal && accountSuspension && (
+        <div
+          className="workmate-suspension-overlay"
+          role="presentation"
+        >
+          <div
+            className="workmate-suspension-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="workmate-suspension-title"
+          >
+            <div
+              className="workmate-suspension-icon"
+              aria-hidden="true"
+            >
+              ⚠️
+            </div>
+
+            <h2 id="workmate-suspension-title">
+              Account Suspended
+            </h2>
+
+            <p className="workmate-suspension-message">
+              {accountSuspension.message}
+            </p>
+
+            <div className="workmate-suspension-reason">
+              <strong>Reason</strong>
+
+              <p>
+                {accountSuspension.reason}
+              </p>
+            </div>
+
+            <p className="workmate-suspension-help">
+              You can contact WorkMate if you think this was a mistake.
+            </p>
+
+            <div className="workmate-suspension-actions">
+              <button
+                type="button"
+                className="workmate-suspension-contact"
+                onClick={() => {
+                  const params = new URLSearchParams(
+                    window.location.search,
+                  );
+
+                  params.set(
+                    "support",
+                    "suspension",
+                  );
+
+                  params.set(
+                    "email",
+                    user?.email || "",
+                  );
+
+                  params.set(
+                    "role",
+                    user?.role || "employer",
+                  );
+
+                  params.set(
+                    "reason",
+                    accountSuspension.reason || "",
+                  );
+
+                  window.history.replaceState(
+                    {},
+                    "",
+                    `${window.location.pathname}?${params.toString()}#contact-us`,
+                  );
+
+                  window.dispatchEvent(
+                    new PopStateEvent("popstate"),
+                  );
+
+                  setShowSuspensionModal(false);
+
+                  window.setTimeout(() => {
+                    document
+                      .getElementById("contact-us")
+                      ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                  }, 150);
+                }}
+              >
+                Contact WorkMate
+              </button>
+
+              <button
+                type="button"
+                className="workmate-suspension-close"
+                onClick={() =>
+                  setShowSuspensionModal(false)
+                }
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                className="workmate-suspension-logout"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
