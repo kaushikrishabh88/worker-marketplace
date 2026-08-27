@@ -318,18 +318,19 @@ function ReceivedRequests() {
                           "Employer"}
                       </h3>
 
-                      {request
-                        .employer
-                        ?.email && (
-                        <p>
-                          ✉️{" "}
-                          {
-                            request
-                              .employer
-                              .email
-                          }
-                        </p>
-                      )}
+                      {requestStatus ===
+                        "accepted" &&
+                        request.employer
+                          ?.email && (
+                          <p>
+                            ✉️{" "}
+                            {
+                              request
+                                .employer
+                                .email
+                            }
+                          </p>
+                        )}
                     </div>
                   </div>
 
@@ -344,8 +345,11 @@ function ReceivedRequests() {
                       </span>
 
                       <strong>
-                        {request.phone ||
-                          "Not available"}
+                        {requestStatus ===
+                        "accepted"
+                          ? request.phone ||
+                            "Not available"
+                          : "Available after acceptance"}
                       </strong>
                     </div>
 
@@ -445,14 +449,88 @@ function ReceivedRequests() {
                           : "✕ Reject"}
                       </button>
                     </div>
+                  ) : requestStatus ===
+                    "accepted" ? (
+                    <>
+                      <div className="request-final-status request-final-accepted">
+                        ✓ Request accepted
+                      </div>
+
+                      <div className="request-contact-panel">
+                        <div className="request-contact-heading">
+                          <span>
+                            CONTACT EMPLOYER
+                          </span>
+
+                          <h4>
+                            Discuss the job and next steps
+                          </h4>
+
+                          <p>
+                            You accepted this employer's request. Contact them directly to discuss the work, timing, payment and other details.
+                          </p>
+                        </div>
+
+                        <div className="request-contact-details">
+                          <div>
+                            <span>
+                              📞 Phone
+                            </span>
+
+                            <strong>
+                              {request.phone ||
+                                "Not available"}
+                            </strong>
+                          </div>
+
+                          {request.employer
+                            ?.email && (
+                            <div>
+                              <span>
+                                ✉️ Email
+                              </span>
+
+                              <strong>
+                                {
+                                  request
+                                    .employer
+                                    .email
+                                }
+                              </strong>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="request-contact-actions">
+                          {request.phone && (
+                            <a
+                              className="request-call-btn"
+                              href={`tel:${String(
+                                request.phone,
+                              ).replace(
+                                /[^+\d]/g,
+                                "",
+                              )}`}
+                            >
+                              📞 Call Employer
+                            </a>
+                          )}
+
+                          {request.employer
+                            ?.email && (
+                            <a
+                              className="request-email-btn"
+                              href={`mailto:${request.employer.email}`}
+                            >
+                              ✉️ Email Employer
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   ) : (
-                    <div
-                      className={`request-final-status request-final-${requestStatus}`}
-                    >
-                      {requestStatus ===
-                      "accepted"
-                        ? "✓ You accepted this request"
-                        : "✕ You rejected this request"}
+                    <div className="request-final-status request-final-rejected">
+                      ✕ You rejected this request
                     </div>
                   )}
                 </article>
