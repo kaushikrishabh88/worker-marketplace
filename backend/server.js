@@ -651,7 +651,6 @@ app.get(
     try {
       const messages = await AdminMessage.find({
         recipient: req.user.userId,
-        recipientDeletedAt: null,
       })
         .populate("sentBy", "name role")
         .sort({ createdAt: -1 })
@@ -704,7 +703,6 @@ app.patch(
         await AdminMessage.findOne({
           _id: id,
           recipient: req.user.userId,
-          recipientDeletedAt: null,
         });
 
       if (!adminMessage) {
@@ -760,10 +758,9 @@ app.delete(
       }
 
       const adminMessage =
-        await AdminMessage.findOne({
+        await AdminMessage.findOneAndDelete({
           _id: id,
           recipient: req.user.userId,
-          recipientDeletedAt: null,
         });
 
       if (!adminMessage) {
@@ -773,15 +770,10 @@ app.delete(
         });
       }
 
-      adminMessage.recipientDeletedAt =
-        new Date();
-
-      await adminMessage.save();
-
       return res.status(200).json({
         success: true,
         message:
-          "Message removed from your inbox.",
+          "Message permanently deleted.",
       });
     } catch (error) {
       console.error(
