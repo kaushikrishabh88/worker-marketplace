@@ -180,7 +180,10 @@ function WorkerProfile() {
 
         setEmployerJobs(
           (data.jobs || []).filter(
-            (job) => job.status === "open",
+            (job) =>
+              String(job.status || "")
+                .trim()
+                .toLowerCase() === "open",
           ),
         );
       } catch (error) {
