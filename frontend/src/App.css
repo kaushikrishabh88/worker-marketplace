@@ -16875,6 +16875,55 @@ main,
   font-size: 13px;
 }
 
+.admin-inbox-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.admin-inbox-modal-actions button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.admin-inbox-done-btn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+}
+
+.admin-inbox-delete-btn {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.admin-inbox-modal-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.admin-inbox-delete-btn:hover:not(:disabled) {
+  background: #ffe4e6;
+  box-shadow:
+    0 7px 18px rgba(185, 28, 28, 0.1);
+}
+
+.admin-inbox-modal-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
 .admin-inbox-warning {
   border-left: 4px solid #f59e0b;
 }
@@ -16913,6 +16962,14 @@ main,
   .admin-inbox-modal-footer {
     flex-direction: column;
     gap: 5px;
+  }
+
+  .admin-inbox-modal-actions {
+    flex-direction: column;
+  }
+
+  .admin-inbox-modal-actions button {
+    width: 100%;
   }
 }
 

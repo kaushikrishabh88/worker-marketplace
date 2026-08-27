@@ -52,6 +52,12 @@ const adminMessageSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    recipientDeletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

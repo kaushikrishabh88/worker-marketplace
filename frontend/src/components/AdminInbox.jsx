@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import API_URL from "../api";
+import { useToast } from "./useToast";
 
 const TYPE_LABELS = {
   greeting: "Greeting",
@@ -23,6 +24,8 @@ const TYPE_ICONS = {
 };
 
 function AdminInbox() {
+  const toast = useToast();
+
   const token =
     localStorage.getItem("workmateToken");
 
@@ -37,6 +40,9 @@ function AdminInbox() {
     useState("");
 
   const [selectedMessage, setSelectedMessage] =
+    useState(null);
+
+  const [deletingId, setDeletingId] =
     useState(null);
 
   const fetchMessages = useCallback(async () => {
@@ -170,6 +176,93 @@ function AdminInbox() {
         "Admin message read error:",
         readError,
       );
+    }
+  };
+
+  const deleteMessage = async (
+    message,
+  ) => {
+    if (
+      !message?._id ||
+      !token
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete "${message.title}" from your inbox?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(
+        message._id,
+      );
+
+      const response =
+        await fetch(
+          `${API_URL}/api/admin-messages/${message._id}`,
+          {
+            method: "DELETE",
+
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          },
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to delete admin message.",
+        );
+      }
+
+      setMessages(
+        (previous) => {
+          const remaining =
+            previous.filter(
+              (item) =>
+                item._id !==
+                message._id,
+            );
+
+          setUnreadCount(
+            remaining.filter(
+              (item) =>
+                !item.read,
+            ).length,
+          );
+
+          return remaining;
+        },
+      );
+
+      setSelectedMessage(null);
+
+      toast.success(
+        "Message removed from your inbox.",
+      );
+    } catch (deleteError) {
+      console.error(
+        "Delete admin inbox message error:",
+        deleteError,
+      );
+
+      toast.error(
+        deleteError.message ||
+          "Unable to delete admin message.",
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -365,6 +458,41 @@ function AdminInbox() {
                   selectedMessage.createdAt,
                 )}
               </small>
+            </div>
+
+            <div className="admin-inbox-modal-actions">
+              <button
+                type="button"
+                className="admin-inbox-done-btn"
+                onClick={() =>
+                  setSelectedMessage(null)
+                }
+                disabled={
+                  deletingId ===
+                  selectedMessage._id
+                }
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                className="admin-inbox-delete-btn"
+                onClick={() =>
+                  deleteMessage(
+                    selectedMessage,
+                  )
+                }
+                disabled={
+                  deletingId ===
+                  selectedMessage._id
+                }
+              >
+                {deletingId ===
+                selectedMessage._id
+                  ? "Deleting..."
+                  : "🗑 Delete Message"}
+              </button>
             </div>
           </article>
         </div>

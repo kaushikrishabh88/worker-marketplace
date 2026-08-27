@@ -651,6 +651,7 @@ app.get(
     try {
       const messages = await AdminMessage.find({
         recipient: req.user.userId,
+        recipientDeletedAt: null,
       })
         .populate("sentBy", "name role")
         .sort({ createdAt: -1 })
@@ -703,6 +704,7 @@ app.patch(
         await AdminMessage.findOne({
           _id: id,
           recipient: req.user.userId,
+          recipientDeletedAt: null,
         });
 
       if (!adminMessage) {
@@ -733,6 +735,64 @@ app.patch(
         success: false,
         message:
           "Unable to update admin message.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   USER - DELETE ADMIN MESSAGE FROM INBOX
+   Recipient Only
+========================================================= */
+
+app.delete(
+  "/api/admin-messages/:id",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid message ID.",
+        });
+      }
+
+      const adminMessage =
+        await AdminMessage.findOne({
+          _id: id,
+          recipient: req.user.userId,
+          recipientDeletedAt: null,
+        });
+
+      if (!adminMessage) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin message not found.",
+        });
+      }
+
+      adminMessage.recipientDeletedAt =
+        new Date();
+
+      await adminMessage.save();
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Message removed from your inbox.",
+      });
+    } catch (error) {
+      console.error(
+        "Delete recipient admin message error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to delete admin message.",
       });
     }
   },
