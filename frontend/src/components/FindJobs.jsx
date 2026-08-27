@@ -9,6 +9,111 @@ import { useToast } from "./useToast";
 import ProfileAvatar from "./ProfileAvatar";
 import API_URL from "../api";
 
+const getProfessionIcon = (skill) => {
+  const value = String(skill || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    value.includes("halwai") ||
+    value.includes("mithai") ||
+    value.includes("sweet")
+  ) {
+    return "🍬";
+  }
+
+  if (
+    value.includes("cook") ||
+    value.includes("chef") ||
+    value.includes("cooking")
+  ) {
+    return "👨‍🍳";
+  }
+
+  if (
+    value.includes("electrician") ||
+    value.includes("electrical")
+  ) {
+    return "⚡";
+  }
+
+  if (
+    value.includes("plumber") ||
+    value.includes("plumbing")
+  ) {
+    return "🔧";
+  }
+
+  if (
+    value.includes("carpenter") ||
+    value.includes("wood")
+  ) {
+    return "🪚";
+  }
+
+  if (
+    value.includes("painter") ||
+    value.includes("painting")
+  ) {
+    return "🖌️";
+  }
+
+  if (
+    value.includes("driver") ||
+    value.includes("driving")
+  ) {
+    return "🚗";
+  }
+
+  if (
+    value.includes("cleaner") ||
+    value.includes("cleaning") ||
+    value.includes("housekeeping")
+  ) {
+    return "🧹";
+  }
+
+  if (
+    value.includes("gardener") ||
+    value.includes("gardening") ||
+    value.includes("mali")
+  ) {
+    return "🌿";
+  }
+
+  if (
+    value.includes("security") ||
+    value.includes("guard")
+  ) {
+    return "🛡️";
+  }
+
+  if (value.includes("mechanic")) {
+    return "🔩";
+  }
+
+  if (
+    value.includes("tailor") ||
+    value.includes("stitch")
+  ) {
+    return "🧵";
+  }
+
+  if (value.includes("delivery")) {
+    return "📦";
+  }
+
+  if (
+    value.includes("labour") ||
+    value.includes("labor") ||
+    value.includes("helper")
+  ) {
+    return "👷";
+  }
+
+  return "👷";
+};
+
 function FindJobs() {
   const toast = useToast();
 
@@ -799,7 +904,9 @@ function FindJobs() {
 
                   <div className="job-card-tags">
                     <span>
-                      🛠{" "}
+                      {getProfessionIcon(
+                        job.skill,
+                      )}{" "}
                       {job.skill}
                     </span>
 
@@ -919,7 +1026,10 @@ function FindJobs() {
 
               <div className="job-details-meta">
                 <span>
-                  🛠 {selectedJob.skill}
+                  {getProfessionIcon(
+                    selectedJob.skill,
+                  )}{" "}
+                  {selectedJob.skill}
                 </span>
 
                 <span>
