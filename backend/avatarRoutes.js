@@ -655,4 +655,5 @@ if (
 module.exports = {
   registerAvatarRoutes,
   publicUser,
+  deleteFile,
 };

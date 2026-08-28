@@ -16,7 +16,11 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const PasswordResetToken = require("./models/PasswordResetToken");
 
-const { registerAvatarRoutes, publicUser } = require("./avatarRoutes");
+const {
+  registerAvatarRoutes,
+  publicUser,
+  deleteFile,
+} = require("./avatarRoutes");
 
 require("dotenv").config();
 
@@ -982,16 +986,37 @@ app.delete(
 
       const userId = targetUser._id;
 
+      /*
+       * Collect GridFS avatar IDs before deleting database
+       * records. User and Worker normally reference the same
+       * file, so a Set prevents duplicate GridFS deletion.
+       */
+      const avatarFileIds = new Set();
+
+      if (targetUser.avatarFileId) {
+        avatarFileIds.add(
+          targetUser.avatarFileId.toString(),
+        );
+      }
+
       if (targetUser.role === "worker") {
         const workerProfiles =
           await Worker.find({
             user: userId,
-          }).select("_id");
+          }).select("_id avatarFileId");
 
         const workerProfileIds =
           workerProfiles.map(
             (worker) => worker._id,
           );
+
+        workerProfiles.forEach((worker) => {
+          if (worker.avatarFileId) {
+            avatarFileIds.add(
+              worker.avatarFileId.toString(),
+            );
+          }
+        });
 
         await Application.deleteMany({
           worker: userId,
@@ -1079,6 +1104,14 @@ app.delete(
       await User.deleteOne({
         _id: userId,
       });
+
+      /*
+       * Permanently remove associated profile images from
+       * MongoDB GridFS after account data has been deleted.
+       */
+      for (const avatarFileId of avatarFileIds) {
+        await deleteFile(avatarFileId);
+      }
 
       return res.status(200).json({
         success: true,
