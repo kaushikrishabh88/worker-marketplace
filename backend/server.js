@@ -2528,6 +2528,14 @@ app.delete("/api/employer/account", authenticateUser, async (req, res) => {
       });
     }
 
+    /*
+     * Keep the GridFS avatar ID before deleting the User
+     * record so the physical profile image can also be
+     * permanently removed.
+     */
+    const avatarFileId =
+      user.avatarFileId || null;
+
     const employerJobs = await Job.find({
       employer: employerId,
     }).select("_id");
@@ -2553,6 +2561,14 @@ app.delete("/api/employer/account", authenticateUser, async (req, res) => {
     await User.deleteOne({
       _id: employerId,
     });
+
+    /*
+     * Delete the employer profile image from MongoDB
+     * GridFS after the account data has been removed.
+     */
+    if (avatarFileId) {
+      await deleteFile(avatarFileId);
+    }
 
     return res.status(200).json({
       success: true,
