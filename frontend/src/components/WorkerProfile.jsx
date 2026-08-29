@@ -83,6 +83,8 @@ function WorkerProfile() {
 
   const [deleting, setDeleting] = useState(false);
 
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   /* =========================================================
      EDIT STATE
   ========================================================= */
@@ -1054,6 +1056,80 @@ function WorkerProfile() {
   }
 
   /* =========================================================
+     DELETE WORKER ACCOUNT
+  ========================================================= */
+
+  async function handleDeleteWorkerAccount() {
+    const confirmed = window.confirm(
+      "Permanently delete your WorkMate account?\n\nYour worker profile, applications, hiring requests, reviews, saved references and profile photo will also be deleted.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const finalConfirmed = window.confirm(
+      "This cannot be undone. Are you sure you want to permanently delete your account?",
+    );
+
+    if (!finalConfirmed) {
+      return;
+    }
+
+    if (!token) {
+      toast.warning("Please login again.");
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+
+      const response = await fetch(
+        `${API_URL}/api/workers/account`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to permanently delete worker account.",
+        );
+      }
+
+      localStorage.removeItem("workmateToken");
+      localStorage.removeItem("workmateUser");
+
+      toast.success(
+        data.message ||
+          "Worker account permanently deleted successfully.",
+      );
+
+      navigate("/", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error(
+        "Delete worker account error:",
+        error,
+      );
+
+      toast.error(
+        error.message ||
+          "Unable to permanently delete worker account.",
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
+  /* =========================================================
      LOADING
   ========================================================= */
 
@@ -1276,9 +1352,31 @@ function WorkerProfile() {
                   className="delete-profile-btn"
                   type="button"
                   onClick={handleDeleteWorker}
-                  disabled={deleting}
+                  disabled={deleting || deletingAccount}
                 >
                   {deleting ? "Deleting..." : "🗑 Delete Profile"}
+                </button>
+              </div>
+
+              <div className="worker-delete-account-section">
+                <div>
+                  <h3>Delete Account</h3>
+
+                  <p>
+                    Permanently delete your WorkMate account,
+                    worker profile and related account data.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="worker-delete-account-btn"
+                  onClick={handleDeleteWorkerAccount}
+                  disabled={deletingAccount || deleting}
+                >
+                  {deletingAccount
+                    ? "Deleting Account..."
+                    : "🗑️ Delete Account"}
                 </button>
               </div>
             </div>

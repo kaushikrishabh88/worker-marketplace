@@ -3296,6 +3296,144 @@ app.get("/api/workers/me", authenticateUser, async (req, res) => {
 });
 
 /* =========================================================
+   DELETE CURRENT WORKER ACCOUNT
+   Worker Only
+========================================================= */
+
+app.delete(
+  "/api/workers/account",
+  authenticateUser,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "worker") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Only worker accounts can delete worker accounts.",
+        });
+      }
+
+      const userId = req.user.userId;
+
+      const user = await User.findById(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Worker account not found.",
+        });
+      }
+
+      const workerProfiles =
+        await Worker.find({
+          user: userId,
+        }).select("_id avatarFileId");
+
+      const workerProfileIds =
+        workerProfiles.map(
+          (worker) => worker._id,
+        );
+
+      /*
+       * User and Worker normally reference the same GridFS
+       * image. A Set prevents deleting the same file twice.
+       */
+      const avatarFileIds = new Set();
+
+      if (user.avatarFileId) {
+        avatarFileIds.add(
+          user.avatarFileId.toString(),
+        );
+      }
+
+      workerProfiles.forEach((worker) => {
+        if (worker.avatarFileId) {
+          avatarFileIds.add(
+            worker.avatarFileId.toString(),
+          );
+        }
+      });
+
+      await Application.deleteMany({
+        worker: userId,
+      });
+
+      await ContactRequest.deleteMany({
+        $or: [
+          {
+            workerUser: userId,
+          },
+          ...(workerProfileIds.length > 0
+            ? [
+                {
+                  worker: {
+                    $in: workerProfileIds,
+                  },
+                },
+              ]
+            : []),
+        ],
+      });
+
+      if (workerProfileIds.length > 0) {
+        await Review.deleteMany({
+          worker: {
+            $in: workerProfileIds,
+          },
+        });
+
+        await SavedWorker.deleteMany({
+          worker: {
+            $in: workerProfileIds,
+          },
+        });
+      }
+
+      await Worker.deleteMany({
+        user: userId,
+      });
+
+      await PasswordResetToken.deleteMany({
+        user: userId,
+      });
+
+      await AdminMessage.deleteMany({
+        recipient: userId,
+      });
+
+      await User.deleteOne({
+        _id: userId,
+      });
+
+      /*
+       * Remove physical profile images only after the
+       * account records have been successfully deleted.
+       */
+      for (const avatarFileId of avatarFileIds) {
+        await deleteFile(avatarFileId);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Worker account permanently deleted successfully.",
+      });
+    } catch (error) {
+      console.error(
+        "Delete worker account error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to permanently delete worker account.",
+      });
+    }
+  },
+);
+
+/* =========================================================
    GET MY SAVED WORKERS
    Employer Only
 ========================================================= */
